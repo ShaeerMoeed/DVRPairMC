@@ -1,0 +1,3 @@
+/Users/shaeermoeed/Github/DVRPairMC/Scratch/cmake-build-debug/CMakeFiles/Scratch.dir
+/Users/shaeermoeed/Github/DVRPairMC/Scratch/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/shaeermoeed/Github/DVRPairMC/Scratch/cmake-build-debug/CMakeFiles/rebuild_cache.dir

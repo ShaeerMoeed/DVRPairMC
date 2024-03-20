@@ -1,0 +1,3 @@
+N = 3, l = 10, Steps = 1000
+g,T,Potential Mean,Potential Error,Correlation Mean,Correlation Error
+1.0,0.5,-2.047986867899437,0.042549025836870626,0.7118914142551638,0.04545037619482864
