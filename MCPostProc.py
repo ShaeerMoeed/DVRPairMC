@@ -244,7 +244,7 @@ def func_pair(x, a, b):
 
 if __name__=="__main__":
     
-    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/20_03_2024_10_46_52"
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/20_03_2024_10_02_53"
     process_mc_outputs(dt_folder)
     process_estimator_outputs(dt_folder)
     process_parameter_sweeps(dt_folder)
