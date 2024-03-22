@@ -43,14 +43,16 @@ public:
 
         std::vector<int> firstBeadConfigs = stepConfigurations.at(0);
 
-        double stepBinder = 0.0;
+        double stepBinderNum = 0.0;
+        double stepBinderDenom = 0.0;
         for (int i = 0; i < numRotors; i++){
-            double phi1 = phiGridPts.at(firstBeadConfigs.at(i));
-            double phi2 = phiGridPts.at(firstBeadConfigs.at(i+1));
-            stepBinder += 0.0; //TODO: Need to implement
+            double phi = phiGridPts.at(firstBeadConfigs.at(i));
+            stepBinderNum += std::pow(cos(phi),4);
+            stepBinderDenom += std::pow(cos(phi),2);
         }
+        double binderRatio = 1.0 -  numRotors * stepBinderNum/(3 * std::pow(stepBinderDenom, 2));
 
-        stepwiseBinder.push_back(stepBinder);
+        stepwiseBinder.push_back(binderRatio);
     }
 
     void updatePotentialEnergy(const std::vector<std::vector<int>> &stepConfigurations){
@@ -73,15 +75,21 @@ public:
 
         double stepPotential = 0.0;
         double stepCorrelation = 0.0;
+        double stepBinderNum = std::pow(cos(phiGridPts.at(firstBeadConfigs.at(0))),4);;
+        double stepBinderDenom = std::pow(cos(phiGridPts.at(firstBeadConfigs.at(0))),2);;
         for (int i = 0; i < numRotors-1; i++){
             double phi_i = phiGridPts.at(firstBeadConfigs.at(i));
             double phi_j = phiGridPts.at(firstBeadConfigs.at(i+1));
             stepPotential += (sin(phi_i) * sin(phi_j) - 2.0 * cos(phi_i) * cos(phi_j));
             stepCorrelation += cos(phi_i - phi_j);
+            stepBinderNum += std::pow(cos(phi_j),4);
+            stepBinderDenom += std::pow(cos(phi_j),2);
         }
+        double binderRatio = 1.0 -  numRotors * stepBinderNum/(3 * std::pow(stepBinderDenom, 2));
 
         stepwisePotential.push_back(couplingStrength * stepPotential);
         stepwiseCorrelation.push_back(stepCorrelation);
+        stepwiseBinder.push_back(binderRatio);
     }
 
     void outputStepData(){
@@ -93,13 +101,14 @@ public:
                 ", Block = " + std::to_string(blockNum) + ", Number of Blocks = " +
                 std::to_string(numBlocks) + ", Number of Steps = " + std::to_string(simulationSteps) +
                 "\n";
-        header += "MC Step, Potential Energy, Correlation\n";
+        header += "MC Step, Potential Energy, Correlation, Binder Ratio\n";
         std::ofstream ofs(filePath);
         ofs << header;
         double potential_sum = 0.0;
         for (int i = 0; i < simulationSteps; i++){
             ofs << std::to_string(i+1) << "," << std::to_string(stepwisePotential.at(i))
-            << "," << std::to_string(stepwiseCorrelation.at(i)) << "\n";
+            << "," << std::to_string(stepwiseCorrelation.at(i))
+            << "," << std::to_string(stepwiseBinder.at(i)) << "\n";
             potential_sum += stepwisePotential.at(i);
         }
         double potential_avg = potential_sum/simulationSteps;

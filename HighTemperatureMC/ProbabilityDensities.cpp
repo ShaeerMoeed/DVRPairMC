@@ -83,7 +83,8 @@ public:
 
     }
 
-    double pairProbability(const std::vector<std::vector<int>> &step_configs, const int &bead_num, const int &rotor_num) {
+    double pairProbability(const std::vector<std::vector<int>> &step_configs, const int &bead_num,
+                               const int &rotor_num) {
 
         double free_term = 1.0;
         double potential_term = 1.0;

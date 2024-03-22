@@ -89,7 +89,10 @@ public:
         //observables.updateOrientationalCorrelation(initialConfigurations);
         //observables.updateBinderRatio(initialConfigurations);
         //observables.updatePotentialEnergy(initialConfigurations);
+
         observables.updateAllProps(initialConfigurations);
+
+
     }
 
     std::vector<std::vector<int>> gibbsSample(const std::vector<std::vector<int>> &step_configs){
@@ -102,7 +105,8 @@ public:
                 stepProbabilities.clear();
                 for (int k = 0; k < numGridPts; k++){
                     nextConfigs.at(i).at(j) = k;
-                    double prob_k = probabilityTables.pairProbability(nextConfigs, i, j);
+                    double prob_k = probabilityTables.pairProbability(nextConfigs, i,
+                                                                          j);
                     stepProbabilities.push_back(prob_k);
                 }
                 std::discrete_distribution<int> distribution(stepProbabilities.begin(),stepProbabilities.end());

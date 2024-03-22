@@ -12,7 +12,7 @@ def process_mc_outputs(dt_folder):
     outFile = os.path.join(dt_folder, "Estimator Statistics.csv")
     
     str_data_out = ""
-    out_header_2 = "g,T,P,tau,Potential Mean,Potential Error,Correlation Mean,Correlation Error\n"
+    out_header_2 = "g,T,P,tau,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Ratio Mean, Binder Ratio Error\n"
     for i in range(len(parameter_sets)):
         parameter_file_id = parameter_sets[i]
         if parameter_file_id[-3:] == "csv" or parameter_file_id[-3:] == "png":
@@ -35,15 +35,18 @@ def process_mc_outputs(dt_folder):
                     sim_steps = int(header[-1].strip().split("=")[-1].strip())
                     potential_array = np.zeros(sim_steps)
                     corr_array = np.zeros(sim_steps)
+                    binder_array = np.zeros(sim_steps)
                 if line_count > 2:
                     potential_array[line_count - 3] = float(data[1])
                     corr_array[line_count - 3] = float(data[2])
+                    binder_array[line_count - 3] = float(data[3])
 
         potential_mean, potential_se = calculateError_byBinning(potential_array)
         corr_mean, corr_se = calculateError_byBinning(corr_array)
+        binder_mean, binder_se = calculateError_byBinning(binder_array)
         tau = 1.0/(float(T) * float(P))
         str_data_out += str(g) + "," + str(T) + "," + str(P) + "," + str(tau) + "," + str(potential_mean) + \
-        "," + str(potential_se) + "," + str(corr_mean) + "," + str(corr_se) + "\n"
+        "," + str(potential_se) + "," + str(corr_mean) + "," + str(corr_se) + "," + str(binder_mean) + "," + str(binder_se) + "\n"
 
     out_header_1 = "N = {}, l = {}, Steps = {}\n".format(N, l, sim_steps)
     out_header = out_header_1 + out_header_2
@@ -59,6 +62,7 @@ def process_estimator_outputs(dt_folder):
     g_T_pair_list = []
     potential_data = []
     corr_data = []
+    binder_data = []
     P_data = []
     with open(inFile, 'r') as f:
         line_count = 0
@@ -72,23 +76,26 @@ def process_estimator_outputs(dt_folder):
                 P_data_g_T = (float(data[2]), float(data[3]))
                 potential_data_g_T = (float(data[4]), float(data[5]))
                 corr_data_g_T = (float(data[6]), float(data[7]))
+                binder_data_g_T = (float(data[8]), float(data[9]))
                 if g_T_pair not in g_T_pair_list:
                     g_T_pair_list.append(g_T_pair)
                     P_data.append([P_data_g_T])
                     potential_data.append([potential_data_g_T])
                     corr_data.append([corr_data_g_T])
+                    binder_data.append([binder_data_g_T])
                 else: 
                     for i in range(len(g_T_pair_list)):
                         if g_T_pair_list[i] == g_T_pair:
                             P_data[i].append(P_data_g_T)
                             potential_data[i].append(potential_data_g_T)
                             corr_data[i].append(corr_data_g_T)
+                            binder_data[i].append(binder_data_g_T)
                             break
 
     outfile = os.path.join(dt_folder, "Parameter Sweep.csv")
     with open(outfile, 'w') as f:
         f.write(out_header_line)
-        f.write("g,T,Potential Mean,Potential Error,Correlation Mean,Correlation Error\n")
+        f.write("g,T,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Ratio Mean, Binder Ratio Error\n")
         for i in range(len(g_T_pair_list)):
             g_T_pair = g_T_pair_list[i]
             g = g_T_pair[0]
@@ -96,16 +103,21 @@ def process_estimator_outputs(dt_folder):
             P_data_g_T = P_data[i]
             potential_data_g_T = potential_data[i]
             corr_data_g_T = corr_data[i]
+            binder_data_g_T = binder_data[i]
             tau_list = list(map(lambda x :float(x[1]), P_data_g_T))
             potential_mean_list = list(map(lambda x :float(x[0]), potential_data_g_T))
             potential_err_list = list(map(lambda x :float(x[1]), potential_data_g_T))
             corr_mean_list = list(map(lambda x :float(x[0]), corr_data_g_T))
             corr_err_list = list(map(lambda x :float(x[1]), corr_data_g_T))
+            binder_mean_list = list(map(lambda x :float(x[0]), binder_data_g_T))
+            binder_err_list = list(map(lambda x :float(x[1]), binder_data_g_T))
             filename_potential = 'Potential Energy Fit (g = {}, T = {}).png'.format(g, T)
             filename_correlation = 'Correlation Fit (g = {}, T = {}).png'.format(g, T)
+            filename_binder = 'Binder Fit (g = {}, T = {}).png'.format(g, T)
             potential_fit_results = extrapolate_results(tau_list, potential_mean_list, func_pair, 100, potential_err_list, 'V', filename_potential, os.path.join(dt_folder, filename_potential))
             corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_pair, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation))
-            f.write(str(g) + "," + str(T) + "," + str(potential_fit_results[1][-1]) + "," + str(potential_fit_results[2]) + "," + str(corr_fit_results[1][-1]) + "," + str(corr_fit_results[2]) + "\n")
+            binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_pair, 100, binder_err_list, 'Binder', filename_binder, os.path.join(dt_folder, filename_binder))
+            f.write(str(g) + "," + str(T) + "," + str(potential_fit_results[1][-1]) + "," + str(potential_fit_results[2]) + "," + str(corr_fit_results[1][-1]) + "," + str(corr_fit_results[2]) + "," + str(binder_fit_results[1][-1]) + "," + str(binder_fit_results[2]) + "\n")
 
     return 0
 
@@ -125,7 +137,7 @@ def process_parameter_sweeps(dt_folder):
                 data = line.strip().split(",")
                 T = float(data[1])
                 g = float(data[0])
-                line_data = (float(data[2]), float(data[3]), float(data[4]), float(data[5]))
+                line_data = (float(data[2]), float(data[3]), float(data[4]), float(data[5]), float(data[6]), float(data[7]))
                 if T not in T_list:
                     T_list.append(T)
                     g_list.append([g])
@@ -145,8 +157,10 @@ def process_parameter_sweeps(dt_folder):
         potential_error_list = list(map(lambda x :float(x[1]), data_T_list))
         corr_mean_list = list(map(lambda x :float(x[2]), data_T_list))
         corr_error_list = list(map(lambda x :float(x[3]), data_T_list))
-        g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list = \
-            zip(*sorted(zip(g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list)))
+        binder_mean_list = list(map(lambda x :float(x[4]), data_T_list))
+        binder_error_list = list(map(lambda x :float(x[5]), data_T_list))
+        g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list = \
+            zip(*sorted(zip(g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list)))
         
         plt.figure()
         plt.plot(g_T_list, potential_mean_list)
@@ -169,6 +183,17 @@ def process_parameter_sweeps(dt_folder):
         corrPlotName = "EiEj (T = {}).png".format(temperature)
         corrPlotPath = os.path.join(dt_folder, corrPlotName)
         plt.savefig(corrPlotPath)
+
+        plt.figure()
+        plt.plot(g_T_list, binder_mean_list)
+        plt.scatter(g_T_list, binder_mean_list)
+        plt.errorbar(g_T_list,binder_mean_list,binder_error_list,capsize=5,fmt="none")
+        plt.title("Effect Of Coupling Strength On Binder Ratio (T = {})".format(temperature))
+        plt.ylabel("Binder")
+        plt.xlabel("g")
+        binderPlotName = "Binder Ratio (T = {}).png".format(temperature)
+        binderPlotPath = os.path.join(dt_folder, binderPlotName)
+        plt.savefig(binderPlotPath)
     
     return 0
 
@@ -244,7 +269,7 @@ def func_pair(x, a, b):
 
 if __name__=="__main__":
     
-    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/20_03_2024_10_02_53"
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/21_03_2024_22_03_32"
     process_mc_outputs(dt_folder)
     process_estimator_outputs(dt_folder)
     process_parameter_sweeps(dt_folder)

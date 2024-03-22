@@ -25,7 +25,7 @@ public:
     int num_digits = 3;
     int block_num = 1;
     int num_blocks = 1;
-    int N = 3;
+    int N = 100;
     int max_states = 10;
     int num_grid_pts = 2 * max_states + 1;
     int mc_steps = 100000;
@@ -135,29 +135,91 @@ int main() {
     std::vector<InputParamters> simulation_params_1;
     std::vector<InputParamters> simulation_params_2;
     std::vector<InputParamters> simulation_params_3;
+    std::vector<InputParamters> simulation_params_4;
+    std::vector<InputParamters> simulation_params_5;
+    std::vector<InputParamters> simulation_params_6;
+    std::vector<InputParamters> simulation_params_7;
+    std::vector<InputParamters> simulation_params_8;
+    std::vector<InputParamters> simulation_params_9;
+    std::vector<InputParamters> simulation_params_10;
+
     MCSimulator mcSimulations_1 = MCSimulator();
     MCSimulator mcSimulations_2 = MCSimulator();
     MCSimulator mcSimulations_3 = MCSimulator();
+    MCSimulator mcSimulations_4 = MCSimulator();
+    MCSimulator mcSimulations_5 = MCSimulator();
+    MCSimulator mcSimulations_6 = MCSimulator();
+    MCSimulator mcSimulations_7 = MCSimulator();
+    MCSimulator mcSimulations_8 = MCSimulator();
+    MCSimulator mcSimulations_9 = MCSimulator();
+    MCSimulator mcSimulations_10 = MCSimulator();
 
-    simulation_params_1.push_back(InputParamters(1, 0.2, 1.0));
-    simulation_params_1.push_back(InputParamters(2, 0.2, 1.0));
-    simulation_params_1.push_back(InputParamters(6, 0.2, 1.0));
+    double sim_T = 0.1;
+    int p_1 = 10;
+    int p_2 = 20;
+    int p_3 = 40;
 
-    simulation_params_2.push_back(InputParamters(1, 1.0, 1.0));
-    simulation_params_2.push_back(InputParamters(2, 1.0, 1.0));
-    simulation_params_2.push_back(InputParamters(6, 1.0, 1.0));
+    simulation_params_1.push_back(InputParamters(p_1, 0.2, sim_T));
+    simulation_params_1.push_back(InputParamters(p_2, 0.2, sim_T));
+    simulation_params_1.push_back(InputParamters(p_3, 0.2, sim_T));
 
-    simulation_params_3.push_back(InputParamters(1, 2.0, 1.0));
-    simulation_params_3.push_back(InputParamters(2, 2.0, 1.0));
-    simulation_params_3.push_back(InputParamters(6, 2.0, 1.0));
+    simulation_params_2.push_back(InputParamters(p_1, 0.4, sim_T));
+    simulation_params_2.push_back(InputParamters(p_2, 0.4, sim_T));
+    simulation_params_2.push_back(InputParamters(p_3, 0.4, sim_T));
+
+    simulation_params_3.push_back(InputParamters(p_1, 0.6, sim_T));
+    simulation_params_3.push_back(InputParamters(p_2, 0.6, sim_T));
+    simulation_params_3.push_back(InputParamters(p_3, 0.6, sim_T));
+
+    simulation_params_4.push_back(InputParamters(p_1, 0.8, sim_T));
+    simulation_params_4.push_back(InputParamters(p_2, 0.8, sim_T));
+    simulation_params_4.push_back(InputParamters(p_3, 0.8, sim_T));
+
+    simulation_params_5.push_back(InputParamters(p_1, 1.0, sim_T));
+    simulation_params_5.push_back(InputParamters(p_2, 1.0, sim_T));
+    simulation_params_5.push_back(InputParamters(p_3, 1.0, sim_T));
+
+    simulation_params_6.push_back(InputParamters(p_1, 1.2, sim_T));
+    simulation_params_6.push_back(InputParamters(p_2, 1.2, sim_T));
+    simulation_params_6.push_back(InputParamters(p_3, 1.2, sim_T));
+
+    simulation_params_7.push_back(InputParamters(p_1, 1.4, sim_T));
+    simulation_params_7.push_back(InputParamters(p_2, 1.4, sim_T));
+    simulation_params_7.push_back(InputParamters(p_3, 1.4, sim_T));
+
+    simulation_params_8.push_back(InputParamters(p_1, 1.6, sim_T));
+    simulation_params_8.push_back(InputParamters(p_2, 1.6, sim_T));
+    simulation_params_8.push_back(InputParamters(p_3, 1.6, sim_T));
+
+    simulation_params_9.push_back(InputParamters(p_1, 1.8, sim_T));
+    simulation_params_9.push_back(InputParamters(p_2, 1.8, sim_T));
+    simulation_params_9.push_back(InputParamters(p_3, 1.8, sim_T));
+
+    simulation_params_10.push_back(InputParamters(p_1, 2.0, sim_T));
+    simulation_params_10.push_back(InputParamters(p_2, 2.0, sim_T));
+    simulation_params_10.push_back(InputParamters(p_3, 2.0, sim_T));
 
     std::thread thread_1(&MCSimulator::iterateParamters, &mcSimulations_1, simulation_params_1);
     std::thread thread_2(&MCSimulator::iterateParamters, &mcSimulations_2, simulation_params_2);
     std::thread thread_3(&MCSimulator::iterateParamters, &mcSimulations_3, simulation_params_3);
+    std::thread thread_4(&MCSimulator::iterateParamters, &mcSimulations_4, simulation_params_4);
+    std::thread thread_5(&MCSimulator::iterateParamters, &mcSimulations_5, simulation_params_5);
+    std::thread thread_6(&MCSimulator::iterateParamters, &mcSimulations_6, simulation_params_6);
+    std::thread thread_7(&MCSimulator::iterateParamters, &mcSimulations_7, simulation_params_7);
+    std::thread thread_8(&MCSimulator::iterateParamters, &mcSimulations_8, simulation_params_8);
+    std::thread thread_9(&MCSimulator::iterateParamters, &mcSimulations_9, simulation_params_9);
+    std::thread thread_10(&MCSimulator::iterateParamters, &mcSimulations_10, simulation_params_10);
 
     thread_1.join();
     thread_2.join();
     thread_3.join();
+    thread_4.join();
+    thread_5.join();
+    thread_6.join();
+    thread_7.join();
+    thread_8.join();
+    thread_9.join();
+    thread_10.join();
 
     std::chrono::time_point<std::chrono::system_clock> end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
