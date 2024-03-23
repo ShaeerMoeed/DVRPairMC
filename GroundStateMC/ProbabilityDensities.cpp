@@ -92,34 +92,60 @@ public:
         int n = rotor_num;
 
         int index_current = step_configs.at(p).at(n);
-        int index_bead_plus = step_configs.at(p+1).at(n);
-        int index_bead_minus = step_configs.at(numBeads - 1).at(n);
+        int index_bead_plus = step_configs.at(p + 1).at(n);
 
         free_term *= freeRho.at(index_current).at(index_bead_plus);
+
+        if (n < numRotors - 1){
+            int index_rotor_plus = step_configs.at(p).at(n+1);
+            int index_bead_plus_rotor_plus = step_configs.at(p + 1).at(n+1);
+
+            int index_current_bead_rotor_plus = index_current * numGridPts + index_rotor_plus;
+            int index_next_bead_rotor_plus = index_bead_plus * numGridPts + index_bead_plus_rotor_plus;
+
+            potential_term *= pairRho.at(index_current_bead_rotor_plus).at(index_next_bead_rotor_plus);
+        }
+        if (n > 0){
+            int index_rotor_minus = step_configs.at(p).at(n-1);
+            int index_bead_plus_rotor_minus = step_configs.at(p + 1).at(n-1);
+
+            int index_current_bead_rotor_minus = index_rotor_minus * numGridPts + index_current;
+            int index_next_bead_rotor_minus = index_bead_plus_rotor_minus * numGridPts + index_bead_plus;
+
+            potential_term *= pairRho.at(index_current_bead_rotor_minus).at(index_next_bead_rotor_minus);
+        }
+
+        return free_term * potential_term;
+    }
+    double pairProbabilityLastBead(const std::vector<std::vector<int>> &step_configs, const int &rotor_num) {
+
+        double free_term = 1.0;
+        double potential_term = 1.0;
+
+        int p = numBeads;
+        int n = rotor_num;
+
+        int index_current = step_configs.at(p).at(n);
+        int index_bead_minus = step_configs.at(p - 1).at(n);
+
         free_term *= freeRho.at(index_bead_minus).at(index_current);
 
         if (n < numRotors - 1){
             int index_rotor_plus = step_configs.at(p).at(n+1);
-            int index_bead_plus_rotor_plus = step_configs.at(p+1).at(n+1);
-            int index_bead_minus_rotor_plus = step_configs.at(numBeads - 1).at(n+1);
+            int index_bead_minus_rotor_plus = step_configs.at(p - 1).at(n+1);
 
             int index_current_bead_rotor_plus = index_current * numGridPts + index_rotor_plus;
-            int index_next_bead_rotor_plus = index_bead_plus * numGridPts + index_bead_plus_rotor_plus;
             int index_prev_bead_rotor_plus = index_bead_minus * numGridPts + index_bead_minus_rotor_plus;
 
-            potential_term *= pairRho.at(index_current_bead_rotor_plus).at(index_next_bead_rotor_plus);
             potential_term *= pairRho.at(index_prev_bead_rotor_plus).at(index_current_bead_rotor_plus);
         }
         if (n > 0){
             int index_rotor_minus = step_configs.at(p).at(n-1);
-            int index_bead_plus_rotor_minus = step_configs.at(p+1).at(n-1);
-            int index_bead_minus_rotor_minus = step_configs.at(numBeads - 1).at(n-1);
+            int index_bead_minus_rotor_minus = step_configs.at(p - 1).at(n-1);
 
             int index_current_bead_rotor_minus = index_rotor_minus * numGridPts + index_current;
-            int index_next_bead_rotor_minus = index_bead_plus_rotor_minus * numGridPts + index_bead_plus;
             int index_prev_bead_rotor_minus = index_bead_minus_rotor_minus * numGridPts + index_bead_minus;
 
-            potential_term *= pairRho.at(index_current_bead_rotor_minus).at(index_next_bead_rotor_minus);
             potential_term *= pairRho.at(index_prev_bead_rotor_minus).at(index_current_bead_rotor_minus);
         }
 
@@ -127,7 +153,7 @@ public:
     }
 
     double pairProbabilityMiddleBead(const std::vector<std::vector<int>> &step_configs, const int &bead_num,
-                               const int &rotor_num) {
+                                    const int &rotor_num) {
 
         double free_term = 1.0;
         double potential_term = 1.0;
@@ -136,16 +162,16 @@ public:
         int n = rotor_num;
 
         int index_current = step_configs.at(p).at(n);
-        int index_bead_plus = step_configs.at(p+1).at(n);
-        int index_bead_minus = step_configs.at(p-1).at(n);
+        int index_bead_plus = step_configs.at(p + 1).at(n);
+        int index_bead_minus = step_configs.at(p - 1).at(n);
 
         free_term *= freeRho.at(index_current).at(index_bead_plus);
         free_term *= freeRho.at(index_bead_minus).at(index_current);
 
         if (n < numRotors - 1){
             int index_rotor_plus = step_configs.at(p).at(n+1);
-            int index_bead_plus_rotor_plus = step_configs.at(p+1).at(n+1);
-            int index_bead_minus_rotor_plus = step_configs.at(p-1).at(n+1);
+            int index_bead_plus_rotor_plus = step_configs.at(p + 1).at(n+1);
+            int index_bead_minus_rotor_plus = step_configs.at(p - 1).at(n+1);
 
             int index_current_bead_rotor_plus = index_current * numGridPts + index_rotor_plus;
             int index_next_bead_rotor_plus = index_bead_plus * numGridPts + index_bead_plus_rotor_plus;
@@ -156,8 +182,8 @@ public:
         }
         if (n > 0){
             int index_rotor_minus = step_configs.at(p).at(n-1);
-            int index_bead_plus_rotor_minus = step_configs.at(p+1).at(n-1);
-            int index_bead_minus_rotor_minus = step_configs.at(p-1).at(n-1);
+            int index_bead_plus_rotor_minus = step_configs.at(p + 1).at(n-1);
+            int index_bead_minus_rotor_minus = step_configs.at(p - 1).at(n-1);
 
             int index_current_bead_rotor_minus = index_rotor_minus * numGridPts + index_current;
             int index_next_bead_rotor_minus = index_bead_plus_rotor_minus * numGridPts + index_bead_plus;
@@ -166,50 +192,6 @@ public:
             potential_term *= pairRho.at(index_current_bead_rotor_minus).at(index_next_bead_rotor_minus);
             potential_term *= pairRho.at(index_prev_bead_rotor_minus).at(index_current_bead_rotor_minus);
         }
-
-        return free_term * potential_term;
-    }
-
-    double pairProbabilityFinalBead(const std::vector<std::vector<int>> &step_configs, const int &rotor_num) {
-
-        double free_term = 1.0;
-        double potential_term = 1.0;
-
-        int p = numBeads - 1;
-        int n = rotor_num;
-
-        int index_current = step_configs.at(p).at(n);
-        int index_bead_plus = step_configs.at(0).at(n);
-        int index_bead_minus = step_configs.at(p-1).at(n);
-
-        free_term *= freeRho.at(index_current).at(index_bead_plus);
-        free_term *= freeRho.at(index_bead_minus).at(index_current);
-
-        if (n < numRotors - 1){
-            int index_rotor_plus = step_configs.at(p).at(n+1);
-            int index_bead_plus_rotor_plus = step_configs.at(0).at(n+1);
-            int index_bead_minus_rotor_plus = step_configs.at(p-1).at(n+1);
-
-            int index_current_bead_rotor_plus = index_current * numGridPts + index_rotor_plus;
-            int index_next_bead_rotor_plus = index_bead_plus * numGridPts + index_bead_plus_rotor_plus;
-            int index_prev_bead_rotor_plus = index_bead_minus * numGridPts + index_bead_minus_rotor_plus;
-
-            potential_term *= pairRho.at(index_current_bead_rotor_plus).at(index_next_bead_rotor_plus);
-            potential_term *= pairRho.at(index_prev_bead_rotor_plus).at(index_current_bead_rotor_plus);
-        }
-        if (n > 0){
-            int index_rotor_minus = step_configs.at(p).at(n-1);
-            int index_bead_plus_rotor_minus = step_configs.at(0).at(n-1);
-            int index_bead_minus_rotor_minus = step_configs.at(p-1).at(n-1);
-
-            int index_current_bead_rotor_minus = index_rotor_minus * numGridPts + index_current;
-            int index_next_bead_rotor_minus = index_bead_plus_rotor_minus * numGridPts + index_bead_plus;
-            int index_prev_bead_rotor_minus = index_bead_minus_rotor_minus * numGridPts + index_bead_minus;
-
-            potential_term *= pairRho.at(index_current_bead_rotor_minus).at(index_next_bead_rotor_minus);
-            potential_term *= pairRho.at(index_prev_bead_rotor_minus).at(index_current_bead_rotor_minus);
-        }
-
         return free_term * potential_term;
     }
 };

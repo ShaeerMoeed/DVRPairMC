@@ -13,10 +13,12 @@ private:
     double simulationTemperature;
     int numBlocks;
     int blockNum;
+    int midBeadIndex;
 
     std::vector<double> stepwiseCorrelation;
     std::vector<double> stepwisePotential;
     std::vector<double> stepwiseBinder;
+    std::vector<double> stepwiseEnergy;
 
     int lMax;
     Grid phiGrid;
@@ -25,71 +27,37 @@ private:
     std::string outFolderPath;
 
 public:
-    void updateOrientationalCorrelation(const std::vector<std::vector<int>> &stepConfigurations){
-
-        std::vector<int> firstBeadConfigs = stepConfigurations.at(0);
-
-        double stepCorrelation = 0.0;
-        for (int i = 0; i < numRotors-1; i++){
-            double phi1 = phiGridPts.at(firstBeadConfigs.at(i));
-            double phi2 = phiGridPts.at(firstBeadConfigs.at(i+1));
-            stepCorrelation += cos(phi1 - phi2);
-        }
-
-        stepwiseCorrelation.push_back(stepCorrelation);
-    }
-
-    void updateBinderRatio(const std::vector<std::vector<int>> &stepConfigurations){
-
-        std::vector<int> firstBeadConfigs = stepConfigurations.at(0);
-
-        double stepBinderNum = 0.0;
-        double stepBinderDenom = 0.0;
-        for (int i = 0; i < numRotors; i++){
-            double phi = phiGridPts.at(firstBeadConfigs.at(i));
-            stepBinderNum += std::pow(cos(phi),4);
-            stepBinderDenom += std::pow(cos(phi),2);
-        }
-        double binderRatio = 1.0 -  numRotors * stepBinderNum/(3 * std::pow(stepBinderDenom, 2));
-
-        stepwiseBinder.push_back(binderRatio);
-    }
-
-    void updatePotentialEnergy(const std::vector<std::vector<int>> &stepConfigurations){
-
-        std::vector<int> firstBeadConfigs = stepConfigurations.at(0);
-
-        double stepPotential = 0.0;
-        for (int i = 0; i < numRotors-1; i++){
-            double phi_i = phiGridPts.at(firstBeadConfigs.at(i));
-            double phi_j = phiGridPts.at(firstBeadConfigs.at(i+1));
-            stepPotential += (sin(phi_i)*sin(phi_j) - 2.0 * cos(phi_i)*cos(phi_j));
-        }
-
-        stepwisePotential.push_back(couplingStrength * stepPotential);
-    }
 
     void updateAllProps(const std::vector<std::vector<int>> &stepConfigurations) {
 
-        std::vector<int> firstBeadConfigs = stepConfigurations.at(0);
+        std::vector<int> middleBeadConfigs = stepConfigurations.at(midBeadIndex);
+        std::vector<int> finalBeadConfigs = stepConfigurations.at(numBeads);
 
         double stepPotential = 0.0;
         double stepCorrelation = 0.0;
-        //double stepBinderNum = std::pow(cos(phiGridPts.at(firstBeadConfigs.at(0))),4);
-        //double stepBinderDenom = std::pow(cos(phiGridPts.at(firstBeadConfigs.at(0))),2);
-        double stepBinder = cos(phiGridPts.at(firstBeadConfigs.at(0)));
+        double stepEnergy = 0.0;
+        //double stepBinderNum = std::pow(cos(phiGridPts.at(middleBeadConfigs.at(0))),4);
+        //double stepBinderDenom = std::pow(cos(phiGridPts.at(middleBeadConfigs.at(0))),2);
+        double stepBinder = cos(phiGridPts.at(middleBeadConfigs.at(0)));;
         for (int i = 0; i < numRotors-1; i++){
-            double phi_i = phiGridPts.at(firstBeadConfigs.at(i));
-            double phi_j = phiGridPts.at(firstBeadConfigs.at(i+1));
+            double phi_i = phiGridPts.at(middleBeadConfigs.at(i));
+            double phi_j = phiGridPts.at(middleBeadConfigs.at(i+1));
             stepPotential += (sin(phi_i) * sin(phi_j) - 2.0 * cos(phi_i) * cos(phi_j));
             stepCorrelation += cos(phi_i - phi_j);
+            //stepBinderNum += std::pow(cos(phi_j),4);
+            //stepBinderDenom += std::pow(cos(phi_j),2);
             stepBinder += cos(phi_j);
+
+            double phi_1 = phiGridPts.at(finalBeadConfigs.at(i));
+            double phi_2 = phiGridPts.at(finalBeadConfigs.at(i+1));
+            stepEnergy += (sin(phi_1) * sin(phi_2) - 2.0 * cos(phi_1) * cos(phi_2));
         }
         double binderRatio = std::pow(stepBinder, 2);
 
         stepwisePotential.push_back(couplingStrength * stepPotential);
         stepwiseCorrelation.push_back(stepCorrelation);
         stepwiseBinder.push_back(binderRatio);
+        stepwiseEnergy.push_back(stepEnergy);
     }
 
     void outputStepData(){
@@ -101,20 +69,18 @@ public:
                 ", Block = " + std::to_string(blockNum) + ", Number of Blocks = " +
                 std::to_string(numBlocks) + ", Number of Steps = " + std::to_string(simulationSteps) +
                 "\n";
-        header += "MC Step, Potential Energy, Correlation, Binder Ratio\n";
+        header += "MC Step, Potential Energy, Correlation, Binder Ratio, Energy\n";
         std::ofstream ofs(filePath);
         ofs << header;
-        double potential_sum = 0.0;
         for (int i = 0; i < simulationSteps; i++){
-            ofs << std::to_string(i+1) << "," << std::to_string(stepwisePotential.at(i))
+            ofs << std::to_string(i+1)
+            << "," << std::to_string(stepwisePotential.at(i))
             << "," << std::to_string(stepwiseCorrelation.at(i))
-            << "," << std::to_string(stepwiseBinder.at(i)) << "\n";
-            potential_sum += stepwisePotential.at(i);
+            << "," << std::to_string(stepwiseBinder.at(i))
+            << "," << std::to_string(stepwiseEnergy.at(i)) << "\n";
         }
-        double potential_avg = potential_sum/simulationSteps;
         ofs.close();
 
-        std::cout << "Potential Average = " << potential_avg << "\n";
     }
 
     Estimators(const int &sim_steps, const int &num_rotors, const int &num_beads, const double &coupling_strength,
@@ -131,6 +97,10 @@ public:
         numBlocks = num_blocks;
         phiGridPts = phiGrid.gridPts;
         outFolderPath = out_dir;
+        midBeadIndex = numBeads/2;
+        if (numBeads % 2 != 0){
+            throw std::runtime_error("Number of beads " + std::to_string(num_beads) + " needs to be even\n");
+        }
     }
 
 };

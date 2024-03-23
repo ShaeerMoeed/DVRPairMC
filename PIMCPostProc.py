@@ -43,7 +43,13 @@ def process_mc_outputs(dt_folder):
 
         potential_mean, potential_se = calculateError_byBinning(potential_array)
         corr_mean, corr_se = calculateError_byBinning(corr_array)
-        binder_mean, binder_se = calculateError_byBinning(binder_array)
+        #binder_mean, binder_se = calculateError_byBinning(binder_array)
+        binder_denom_array = np.copy(binder_array)
+        binder_num_array = list(map(lambda x :x**2, binder_array))
+        binder_denom_mean, binder_denom_se = calculateError_byBinning(binder_denom_array)
+        binder_num_mean, binder_num_se = calculateError_byBinning(binder_num_array)
+        binder_mean = 1.0 - binder_num_mean/(3.0 * (binder_denom_mean**2))
+        binder_se = binder_denom_se/(N**2)
         tau = 1.0/(float(T) * float(P))
         str_data_out += str(g) + "," + str(T) + "," + str(P) + "," + str(tau) + "," + str(potential_mean) + \
         "," + str(potential_se) + "," + str(corr_mean) + "," + str(corr_se) + "," + str(binder_mean) + "," + str(binder_se) + "\n"
@@ -116,7 +122,7 @@ def process_estimator_outputs(dt_folder):
             filename_binder = 'Binder Fit (g = {}, T = {}).png'.format(g, T)
             potential_fit_results = extrapolate_results(tau_list, potential_mean_list, func_pair, 100, potential_err_list, 'V', filename_potential, os.path.join(dt_folder, filename_potential))
             corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_pair, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation))
-            binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_pair, 100, binder_err_list, 'Binder', filename_binder, os.path.join(dt_folder, filename_binder))
+            binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_pair, 100, binder_err_list, 'Binder', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=True)
             f.write(str(g) + "," + str(T) + "," + str(potential_fit_results[1][-1]) + "," + str(potential_fit_results[2]) + "," + str(corr_fit_results[1][-1]) + "," + str(corr_fit_results[2]) + "," + str(binder_fit_results[1][-1]) + "," + str(binder_fit_results[2]) + "\n")
 
     return 0
@@ -198,7 +204,7 @@ def process_parameter_sweeps(dt_folder):
     return 0
 
 
-def extrapolate_results(x_pts, y_pts, func, num_pts_out, error, ylabel, title, filepath):
+def extrapolate_results(x_pts, y_pts, func, num_pts_out, error, ylabel, title, filepath, use_pts=False):
 
     if len(y_pts) > 2:
 
@@ -227,6 +233,11 @@ def extrapolate_results(x_pts, y_pts, func, num_pts_out, error, ylabel, title, f
         plt.close()
 
     else:
+        fit_x = [x_pts[-1]]
+        fit_y = [y_pts[-1]]
+        err = error[-1]
+
+    if use_pts:
         fit_x = [x_pts[-1]]
         fit_y = [y_pts[-1]]
         err = error[-1]
@@ -269,7 +280,7 @@ def func_pair(x, a, b):
 
 if __name__=="__main__":
     
-    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/21_03_2024_22_03_32"
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIMC/23_03_2024_12_17_07"
     process_mc_outputs(dt_folder)
     process_estimator_outputs(dt_folder)
     process_parameter_sweeps(dt_folder)

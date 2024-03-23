@@ -64,7 +64,7 @@ public:
             std::cout << "Average of seed throw away values: " << seedThrowaway << "\n";
 
             std::vector<int> beadInitialConfigs;
-            for (int i = 0; i < numBeads; i++){
+            for (int i = 0; i < numBeads+1; i++){
                 beadInitialConfigs.clear();
                 for (int j = 0; j < numRotors; j++){
                     beadInitialConfigs.push_back(initialConfigDist(initialConfigGenerator));
@@ -74,7 +74,7 @@ public:
         }
         else{
             std::vector<int> beadInitialConfigs;
-            for (int i = 0; i < numBeads; i++){
+            for (int i = 0; i < numBeads+1; i++){
                 beadInitialConfigs.clear();
                 for (int j = 0; j < numRotors; j++){
                     beadInitialConfigs.push_back(0);
@@ -111,13 +111,13 @@ public:
             nextConfigs.at(0).at(j) = distribution(sampleGenerator);
         }
 
-        for (int i = 1; i < numBeads - 1; i++){
+        for (int i = 1; i < numBeads; i++){
             for (int j = 0; j < numRotors; j++){
                 stepProbabilities.clear();
                 for (int k = 0; k < numGridPts; k++){
                     nextConfigs.at(i).at(j) = k;
                     double prob_k = probabilityTables.pairProbabilityMiddleBead(nextConfigs, i,
-                                                                                j);
+                                                                          j);
                     stepProbabilities.push_back(prob_k);
                 }
                 std::discrete_distribution<int> distribution(stepProbabilities.begin(),stepProbabilities.end());
@@ -128,13 +128,14 @@ public:
         for (int j = 0; j < numRotors; j++){
             stepProbabilities.clear();
             for (int k = 0; k < numGridPts; k++){
-                nextConfigs.at(numBeads - 1).at(j) = k;
-                double prob_k = probabilityTables.pairProbabilityFinalBead(nextConfigs,j);
+                nextConfigs.at(numBeads).at(j) = k;
+                double prob_k = probabilityTables.pairProbabilityLastBead(nextConfigs, j);
                 stepProbabilities.push_back(prob_k);
             }
             std::discrete_distribution<int> distribution(stepProbabilities.begin(),stepProbabilities.end());
-            nextConfigs.at(numBeads - 1).at(j) = distribution(sampleGenerator);
+            nextConfigs.at(numBeads).at(j) = distribution(sampleGenerator);
         }
+
         return nextConfigs;
     }
 

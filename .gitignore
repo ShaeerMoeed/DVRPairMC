@@ -3,3 +3,8 @@ Scratch/
 scratch.py
 ProbabilityDensities/
 .DS_Store
+GroundStateMC/.idea/
+GroundStateMC/cmake-build-debug
+HighTemperatureMC/cmake-build-debug
+HighTemperatureMC/.idea/
+.DS_Store

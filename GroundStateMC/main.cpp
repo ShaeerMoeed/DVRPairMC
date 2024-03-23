@@ -25,10 +25,10 @@ public:
     int num_digits = 3;
     int block_num = 1;
     int num_blocks = 1;
-    int N = 60;
+    int N = 50;
     int max_states = 10;
     int num_grid_pts = 2 * max_states + 1;
-    int mc_steps = 100000;
+    int mc_steps = 1000000;
     int sampler_seed = 123456789;
 
     std::string dt_folder;
@@ -41,7 +41,7 @@ public:
         std::string datetime = std::format("{0:%d_%m_%Y}_{1:%H_%M_%S}",
                                            std::chrono::year_month_day{today},
                                            std::chrono::hh_mm_ss{time-today});
-        dt_folder = rootFolder + "Results/PIMC/" + datetime;
+        dt_folder = rootFolder + "Results/PIGS/" + datetime;
 
         if (not std::filesystem::is_directory(dt_folder)){
             std::filesystem::create_directory(dt_folder);
@@ -154,54 +154,50 @@ int main() {
     MCSimulator mcSimulations_9 = MCSimulator();
     MCSimulator mcSimulations_10 = MCSimulator();
 
-    double sim_T = 1.0;
-    int p_1 = 4;
-    int p_2 = 5;
-    int p_3 = 6;
-    std::vector<double> g_vec;
-    for (int i = 0; i < 10; i++){
-        g_vec.push_back((i * 0.5) + 1.0);
-    }
+    double sim_T = 0.1;
+    int p_1 = 20;
+    int p_2 = 40;
+    int p_3 = 60;
 
-    simulation_params_1.push_back(InputParamters(p_1, g_vec.at(0), sim_T));
-    simulation_params_1.push_back(InputParamters(p_2, g_vec.at(0), sim_T));
-    simulation_params_1.push_back(InputParamters(p_3, g_vec.at(0), sim_T));
+    simulation_params_1.push_back(InputParamters(p_1, 0.1, sim_T));
+    simulation_params_1.push_back(InputParamters(p_2, 0.1, sim_T));
+    simulation_params_1.push_back(InputParamters(p_3, 0.1, sim_T));
 
-    simulation_params_2.push_back(InputParamters(p_1, g_vec.at(1), sim_T));
-    simulation_params_2.push_back(InputParamters(p_2, g_vec.at(1), sim_T));
-    simulation_params_2.push_back(InputParamters(p_3, g_vec.at(1), sim_T));
+    simulation_params_2.push_back(InputParamters(p_1, 0.2, sim_T));
+    simulation_params_2.push_back(InputParamters(p_2, 0.2, sim_T));
+    simulation_params_2.push_back(InputParamters(p_3, 0.2, sim_T));
 
-    simulation_params_3.push_back(InputParamters(p_1, g_vec.at(2), sim_T));
-    simulation_params_3.push_back(InputParamters(p_2, g_vec.at(2), sim_T));
-    simulation_params_3.push_back(InputParamters(p_3, g_vec.at(2), sim_T));
+    simulation_params_3.push_back(InputParamters(p_1, 0.3, sim_T));
+    simulation_params_3.push_back(InputParamters(p_2, 0.3, sim_T));
+    simulation_params_3.push_back(InputParamters(p_3, 0.3, sim_T));
 
-    simulation_params_4.push_back(InputParamters(p_1, g_vec.at(3), sim_T));
-    simulation_params_4.push_back(InputParamters(p_2, g_vec.at(3), sim_T));
-    simulation_params_4.push_back(InputParamters(p_3, g_vec.at(3), sim_T));
+    simulation_params_4.push_back(InputParamters(p_1, 0.4, sim_T));
+    simulation_params_4.push_back(InputParamters(p_2, 0.4, sim_T));
+    simulation_params_4.push_back(InputParamters(p_3, 0.4, sim_T));
 
-    simulation_params_5.push_back(InputParamters(p_1, g_vec.at(4), sim_T));
-    simulation_params_5.push_back(InputParamters(p_2, g_vec.at(4), sim_T));
-    simulation_params_5.push_back(InputParamters(p_3, g_vec.at(4), sim_T));
+    simulation_params_5.push_back(InputParamters(p_1, 0.5, sim_T));
+    simulation_params_5.push_back(InputParamters(p_2, 0.5, sim_T));
+    simulation_params_5.push_back(InputParamters(p_3, 0.5, sim_T));
 
-    simulation_params_6.push_back(InputParamters(p_1, g_vec.at(5), sim_T));
-    simulation_params_6.push_back(InputParamters(p_2, g_vec.at(5), sim_T));
-    simulation_params_6.push_back(InputParamters(p_3, g_vec.at(5), sim_T));
+    simulation_params_6.push_back(InputParamters(p_1, 0.6, sim_T));
+    simulation_params_6.push_back(InputParamters(p_2, 0.6, sim_T));
+    simulation_params_6.push_back(InputParamters(p_3, 0.6, sim_T));
 
-    simulation_params_7.push_back(InputParamters(p_1, g_vec.at(6), sim_T));
-    simulation_params_7.push_back(InputParamters(p_2, g_vec.at(6), sim_T));
-    simulation_params_7.push_back(InputParamters(p_3, g_vec.at(6), sim_T));
+    simulation_params_7.push_back(InputParamters(p_1, 0.7, sim_T));
+    simulation_params_7.push_back(InputParamters(p_2, 0.7, sim_T));
+    simulation_params_7.push_back(InputParamters(p_3, 0.7, sim_T));
 
-    simulation_params_8.push_back(InputParamters(p_1, g_vec.at(7), sim_T));
-    simulation_params_8.push_back(InputParamters(p_2, g_vec.at(7), sim_T));
-    simulation_params_8.push_back(InputParamters(p_3, g_vec.at(7), sim_T));
+    simulation_params_8.push_back(InputParamters(p_1, 0.8, sim_T));
+    simulation_params_8.push_back(InputParamters(p_2, 0.8, sim_T));
+    simulation_params_8.push_back(InputParamters(p_3, 0.8, sim_T));
 
-    simulation_params_9.push_back(InputParamters(p_1, g_vec.at(8), sim_T));
-    simulation_params_9.push_back(InputParamters(p_2, g_vec.at(8), sim_T));
-    simulation_params_9.push_back(InputParamters(p_3, g_vec.at(8), sim_T));
+    simulation_params_9.push_back(InputParamters(p_1, 0.9, sim_T));
+    simulation_params_9.push_back(InputParamters(p_2, 0.9, sim_T));
+    simulation_params_9.push_back(InputParamters(p_3, 0.9, sim_T));
 
-    simulation_params_10.push_back(InputParamters(p_1, g_vec.at(9), sim_T));
-    simulation_params_10.push_back(InputParamters(p_2, g_vec.at(9), sim_T));
-    simulation_params_10.push_back(InputParamters(p_3, g_vec.at(9), sim_T));
+    simulation_params_10.push_back(InputParamters(p_1, 1.0, sim_T));
+    simulation_params_10.push_back(InputParamters(p_2, 1.0, sim_T));
+    simulation_params_10.push_back(InputParamters(p_3, 1.0, sim_T));
 
     std::thread thread_1(&MCSimulator::iterateParamters, &mcSimulations_1, simulation_params_1);
     std::thread thread_2(&MCSimulator::iterateParamters, &mcSimulations_2, simulation_params_2);

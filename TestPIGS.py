@@ -88,67 +88,6 @@ def get_binder(num_grid_pts):
 
     return binder_vec
 
-def prop_n3_SOS_preprocess(l, g):
-
-    k_1_body = dvr_k(l)
-
-    num_grid_pts = 2*l+1
-    k_3_body = np.kron(k_1_body, np.eye(num_grid_pts**2)) + np.kron(np.kron(np.eye(num_grid_pts), k_1_body),np.eye(num_grid_pts)) + np.kron(np.eye(num_grid_pts**2), k_1_body) 
-    #k_3_body = np.kron(k_1_body, np.kron(np.eye(num_grid_pts), np.eye(num_grid_pts))) + np.kron(np.eye(num_grid_pts), np.kron(k_1_body, np.eye(num_grid_pts))) + np.kron(np.eye(num_grid_pts), np.kron(np.eye(num_grid_pts), k_1_body))
-    v_3_body = dvr_v_n3(l, g)
-
-    h_3_body = k_3_body + v_3_body
-    evals, evecs = np.linalg.eigh(h_3_body)
-    print(evals[0])
-
-    potential_vec = np.diag(v_3_body)
-    corr_vec = get_corr_vec(num_grid_pts)
-    binder_vec = get_binder(num_grid_pts)
-
-    return evals, evecs, corr_vec, potential_vec, binder_vec
-
-def prop_n3_SOS(eigvals, eigstates, corr_vec, pot_vec, binder_vec, T, num_grid_pts):
-
-    beta = 1.0/T
-    partition_func = 0.0
-    v_exp = 0.0
-    corr_exp = 0.0
-    binder_exp = 0.0
-    for i in range(num_grid_pts**3):
-        prob = np.exp(-beta * eigvals[i])
-        partition_func += prob
-        state_vec = eigstates[:,i]
-        v_exp_term = 0.0
-        corr_exp_term = 0.0
-        binder_exp_term = 0.0
-        for j in range(num_grid_pts**3):
-            v_exp_term += (state_vec[j]**2) * pot_vec[j]
-            corr_exp_term += (state_vec[j]**2) * corr_vec[j]
-            binder_exp_term += (state_vec[j]**2) * binder_vec[j]
-        v_exp += v_exp_term * prob
-        corr_exp += corr_exp_term * prob
-        binder_exp += binder_exp_term * prob
-
-    v_exp /= partition_func
-    corr_exp /= partition_func
-    binder_exp /= partition_func
-
-    ground_state = eigstates[:, 0]
-    V_operator = np.diag(pot_vec)
-    corr_operator = np.diag(corr_vec)
-    binder_operator = np.diag(binder_vec)
-    gs_exp_v = np.dot(np.dot(np.transpose(ground_state), V_operator), ground_state)
-    gs_exp_corr = np.dot(np.dot(np.transpose(ground_state), corr_operator), ground_state)
-    gs_exp_binder = np.dot(np.dot(np.transpose(ground_state), binder_operator), ground_state)
-
-    print("GS <V> = ", gs_exp_v)
-    print("GS <Corr> = ", gs_exp_corr)
-    print("GS <Binder> = ", gs_exp_binder)
-
-    print("Ground State Energy ED (N=3) = ", eigvals[0])
-
-    return v_exp, corr_exp, binder_exp
-
 def prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec):
 
     k_1_body = dvr_k(l)
@@ -208,54 +147,64 @@ def prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec):
                             index_p = (ip * (num_grid_pts**2)) + (jp * num_grid_pts) + kp
                             rho_tau[index, index_p] *= prop_k[i,ip] * prop_k[j,jp] * prop_k[k,kp] * prop_pair[i * num_grid_pts + j, ip * num_grid_pts + jp] * prop_pair[j * num_grid_pts + k, jp * num_grid_pts + kp] 
     
-    rho_beta = np.copy(rho_tau)
+    rho_beta_over_2 = np.copy(rho_tau)
     delta_phi = 2.0 * np.pi/num_grid_pts
-    for i in range(P-1):
-        rho_beta = (delta_phi**3) * np.matmul(rho_beta, rho_tau)
+    for i in range(int(P/2) - 1):
+        rho_beta_over_2 = (delta_phi**3) * np.matmul(rho_beta_over_2, rho_tau)
+    rho_beta = (delta_phi**3) * np.matmul(rho_beta_over_2, rho_beta_over_2)
+
+    v_mat = np.diag(potential_vec)
+    corr_mat = np.diag(corr_vec)
+    binder_mat = np.diag(binder_vec)
+
+    rho_dot_V = np.matmul(rho_beta_over_2,v_mat)
+    rho_dot_corr = np.matmul(rho_beta_over_2,corr_mat)
+    rho_dot_binder = np.matmul(rho_beta_over_2,binder_mat)
+
+    rho_dot_V_dot_rho = (delta_phi**3) * np.matmul(rho_dot_V, rho_beta_over_2)
+    rho_dot_corr_dot_rho = (delta_phi**3) * np.matmul(rho_dot_corr, rho_beta_over_2)
+    rho_dot_binder_dot_rho = (delta_phi**3) * np.matmul(rho_dot_binder, rho_beta_over_2)
+
+    rho_dot_E = np.matmul(rho_beta,potential_vec)
 
     v_exp = 0.0
     corr_exp = 0.0
     binder_exp = 0.0
     partition_func = 0.0
-    for i in range(num_grid_pts**3):
-        v_exp += rho_beta[i,i]*potential_vec[i]
-        corr_exp += rho_beta[i,i]*corr_vec[i]
-        binder_exp += rho_beta[i,i]*binder_vec[i]
-        partition_func += rho_beta[i,i]
+    e_exp = 0.0
 
-    v_exp_check_nmm = np.trace(np.matmul(np.diag(potential_vec), rho_beta))
-    Z_check = np.trace(rho_beta)
-    v_exp_check_nmm /= Z_check
-    print(v_exp_check_nmm)
+    for i in range(num_grid_pts**3):
+        e_exp += rho_dot_E[i]
+        for j in range(num_grid_pts**3):
+            v_exp += rho_dot_V_dot_rho[i,j]
+            corr_exp += rho_dot_corr_dot_rho[i,j]
+            binder_exp += rho_dot_binder_dot_rho[i,j]
+            partition_func += rho_beta[i,j]
 
     v_exp *= 1.0 / partition_func
     corr_exp *= 1.0 / partition_func
     binder_exp *= 1.0 / partition_func
+    e_exp *= 1.0 / partition_func
 
-    return v_exp, corr_exp, binder_exp
+    return v_exp, corr_exp, binder_exp, e_exp
 
 if __name__ == "__main__":
 
     l = 5
-    g = 2.0
-    P = 6
-    T = 1.0
+    g = 1.0
+    P = 40
+    T = 0.1
 
-    evals, evecs, corr_vec, potential_vec, binder_vec = prop_n3_SOS_preprocess(l, g)
-    v_exp_sos, corr_exp_sos, binder_exp_sos = prop_n3_SOS(evals, evecs, corr_vec, potential_vec, binder_vec, T, 2*l+1)
-
-    #v_3_body = dvr_v_n3(l, g)
-    #potential_vec = np.diag(v_3_body)
-    #corr_vec = get_corr_vec(2 * l + 1)
-    #binder_vec = get_binder(2 * l + 1)
-    v_exp_nmm, corr_exp_nmm, binder_exp_nmm = prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec)
+    v_3_body = dvr_v_n3(l, g)
+    potential_vec = np.diag(v_3_body)
+    corr_vec = get_corr_vec(2 * l + 1)
+    binder_vec = get_binder(2 * l + 1)
+    v_exp_nmm, corr_exp_nmm, binder_exp_nmm, E_exp_nmm = prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec)
 
     print("V (NMM) = ", v_exp_nmm)
-    print("V (SOS) = ", v_exp_sos)
     print("Correlation (NMM) = ", corr_exp_nmm)
-    print("Correlation (SOS) = ", corr_exp_sos)
     print("Binder (NMM) = ", binder_exp_nmm)
-    print("Binder (SOS) = ", binder_exp_sos)
+    print("Energy (NMM) = ", E_exp_nmm)
     
 
 
