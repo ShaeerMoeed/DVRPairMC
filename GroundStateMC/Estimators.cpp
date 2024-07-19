@@ -39,6 +39,7 @@ public:
         //double stepBinderNum = std::pow(cos(phiGridPts.at(middleBeadConfigs.at(0))),4);
         //double stepBinderDenom = std::pow(cos(phiGridPts.at(middleBeadConfigs.at(0))),2);
         double stepBinder = cos(phiGridPts.at(middleBeadConfigs.at(0)));;
+
         for (int i = 0; i < numRotors-1; i++){
             double phi_i = phiGridPts.at(middleBeadConfigs.at(i));
             double phi_j = phiGridPts.at(middleBeadConfigs.at(i+1));
@@ -77,7 +78,40 @@ public:
             << "," << std::to_string(stepwisePotential.at(i))
             << "," << std::to_string(stepwiseCorrelation.at(i))
             << "," << std::to_string(stepwiseBinder.at(i))
-            << "," << std::to_string(stepwiseEnergy.at(i)) << "\n";
+            << "," << std::to_string(stepwiseEnergy.at(i))
+            << "\n";
+
+        }
+        ofs.close();
+
+    }
+
+    void outputDiagnostics(const std::vector<std::vector<std::vector<int>>> &phi_configs){
+
+        std::string filePath = outFolderPath + "/" + "MC Diagnostic Outputs.csv";
+        std::string header = "N = " + std::to_string(numRotors) +
+                             ", P = " + std::to_string(numBeads) +
+                             ", g = " + std::to_string(couplingStrength) +
+                             ", T = " + std::to_string(simulationTemperature) +
+                             ", l = " + std::to_string(lMax) +
+                             ", Number of Steps = " + std::to_string(simulationSteps) +
+                             "\n";
+        header += "MC Step, Bead Number, Sector, Rotor Number, Rotor Index\n";
+
+        // TODO: No need for sector here
+        std::ofstream ofs(filePath);
+        ofs << header;
+        for (int i = 0; i < simulationSteps; i++){
+            for (int j = 0; j < numBeads; j++){
+                for (int k = 0; k < numRotors; k++){
+                    ofs << std::to_string(i+1);
+                    ofs << "," << std::to_string(j+1);
+                    ofs << "," << "A";
+                    ofs << "," << std::to_string(k+1);
+                    ofs << "," << std::to_string(phi_configs.at(i).at(j).at(k));
+                    ofs << "\n";
+                }
+            }
         }
         ofs.close();
 

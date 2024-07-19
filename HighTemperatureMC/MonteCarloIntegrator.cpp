@@ -45,7 +45,7 @@ public:
         numGridPts = num_grid_pts;
         diagnostics = track_diagnostics;
 
-        std::uniform_int_distribution<> initialConfigDist(0, numRotors-1);
+        std::uniform_int_distribution<> initialConfigDist(0, numGridPts-1);
 
         simulationSteps = sim_steps;
         sampleGenerator.seed(samplerSeed);

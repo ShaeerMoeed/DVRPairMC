@@ -1,0 +1,18 @@
+1a. Run MC entropy for P = 4,6,8 (shorter runs for comparison with NMM; use l = 4 for these tests)
+2a. Run NMM entropy for P = 4,6,8
+3a. See if there is a bead for which there is a large divergence from NMM
+4a. If there is a divergence, zero in on that number of beads
+5a. If not keep looking until you get to 30 
+
+1b. Check the ratio (N1 + N2)/(D1 + D2) in Cpp code for P values that are problematic.
+2b. If they don't match, there is something wrong in the python code for postproc. Find bug there. 
+2c. If they do match, take the smallest problematic P value and for that, compare the unswapped samples to PIGS code
+2d. If that doesn't match, debug the unswapped samples code
+2e. If that does match, look at the swapped code for that number of beads to see if that somehow fails
+2f. For 2e, carefully re-derive the equations and trace through the code to ensure the code is true to the equations
+
+3a. Failing to find issues there, re-derive the swap probabilities and check that code against the equations
+
+4a. Regardless of the results of the above, work out the correct error propagation for entropy as suggested by PN
+
+5a. Look at histograms of just the swapped bead and rotors to see if they make sense

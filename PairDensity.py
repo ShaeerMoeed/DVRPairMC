@@ -201,10 +201,15 @@ def write_file(parent_dir, density_name, density_matrix, l, T, g):
 
 if __name__ == "__main__":
 
-    T_list = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
-    tau_list = [1.0/(T) for T in T_list]
+    # Commented for entropy test with NMM - uncomment for prod and comment parameters below
+    '''T_list = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
     l = 10
-    g_list = [1.0, 1.5, 2.0]
+    g_list = [1.0, 1.5, 2.0]'''
+    T_list = [1.4, 1.6, 1.8]
+    l = 4
+    g_list = [0.3, 0.4, 0.5, 0.6]
+
+    tau_list = [1.0/(T) for T in T_list]
     N = 2
     pool = multiprocessing.Pool()
     parent_dir = "/Users/shaeermoeed/Github/DVRPairMC/ProbabilityDensities"

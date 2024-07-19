@@ -114,6 +114,7 @@ def prop_n3_SOS(eigvals, eigstates, corr_vec, pot_vec, binder_vec, T, num_grid_p
     v_exp = 0.0
     corr_exp = 0.0
     binder_exp = 0.0
+    energy_exp = 0.0
     for i in range(num_grid_pts**3):
         prob = np.exp(-beta * eigvals[i])
         partition_func += prob
@@ -128,10 +129,12 @@ def prop_n3_SOS(eigvals, eigstates, corr_vec, pot_vec, binder_vec, T, num_grid_p
         v_exp += v_exp_term * prob
         corr_exp += corr_exp_term * prob
         binder_exp += binder_exp_term * prob
+        energy_exp += eigvals[i] * prob
 
     v_exp /= partition_func
     corr_exp /= partition_func
     binder_exp /= partition_func
+    energy_exp /= partition_func
 
     ground_state = eigstates[:, 0]
     V_operator = np.diag(pot_vec)
@@ -147,7 +150,7 @@ def prop_n3_SOS(eigvals, eigstates, corr_vec, pot_vec, binder_vec, T, num_grid_p
 
     print("Ground State Energy ED (N=3) = ", eigvals[0])
 
-    return v_exp, corr_exp, binder_exp
+    return v_exp, corr_exp, binder_exp, energy_exp
 
 def prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec):
 
@@ -242,7 +245,7 @@ if __name__ == "__main__":
     T = 1.0
 
     evals, evecs, corr_vec, potential_vec, binder_vec = prop_n3_SOS_preprocess(l, g)
-    v_exp_sos, corr_exp_sos, binder_exp_sos = prop_n3_SOS(evals, evecs, corr_vec, potential_vec, binder_vec, T, 2*l+1)
+    v_exp_sos, corr_exp_sos, binder_exp_sos, energy_exp_sos = prop_n3_SOS(evals, evecs, corr_vec, potential_vec, binder_vec, T, 2*l+1)
 
     #v_3_body = dvr_v_n3(l, g)
     #potential_vec = np.diag(v_3_body)
@@ -256,6 +259,7 @@ if __name__ == "__main__":
     print("Correlation (SOS) = ", corr_exp_sos)
     print("Binder (NMM) = ", binder_exp_nmm)
     print("Binder (SOS) = ", binder_exp_sos)
+    print("Energy (SOS) = ", energy_exp_sos)
     
 
 

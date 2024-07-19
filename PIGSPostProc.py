@@ -12,7 +12,7 @@ def process_mc_outputs(dt_folder):
     outFile = os.path.join(dt_folder, "Estimator Statistics.csv")
     
     str_data_out = ""
-    out_header_2 = "g,T,P,tau,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Ratio Mean, Binder Ratio Error, Energy Mean, Energy Error\n"
+    out_header_2 = "g,T,P,tau,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Mean, Binder Error, Energy Mean, Energy Error\n"
     for i in range(len(parameter_sets)):
         parameter_file_id = parameter_sets[i]
         if parameter_file_id[-3:] == "csv" or parameter_file_id[-3:] == "png":
@@ -49,15 +49,24 @@ def process_mc_outputs(dt_folder):
         #binder_mean, binder_se = calculateError_byBinning(binder_array)
         binder_denom_array = np.copy(binder_array)
         binder_num_array = list(map(lambda x :x**2, binder_array))
+
+        binder_num_jk_samples, num_blocks = jack_knife_samples(700, binder_num_array, 5)
+        binder_denom_jk_samples, num_blocks = jack_knife_samples(700, binder_denom_array, 5)
+        binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks)
+
+        '''
         binder_denom_mean, binder_denom_se = calculateError_byBinning(binder_denom_array)
         binder_num_mean, binder_num_se = calculateError_byBinning(binder_num_array)
-        binder_mean = 1.0 - binder_num_mean/(3.0 * (binder_denom_mean**2))
-        binder_se = binder_denom_se/(N**2)
+        '''
+
+        #binder_mean = 1.0 - binder_num_mean/(3.0 * (binder_denom_mean**2))
+        # TODO: Figure out correct statistical error for binder
+        #binder_se = binder_denom_se/(N**2)
 
         energy_mean, energy_se = calculateError_byBinning(energy_array)
         tau = 1.0/(float(T) * float(P))
         str_data_out += str(g) + "," + str(T) + "," + str(P) + "," + str(tau) + "," + str(potential_mean) + \
-        "," + str(potential_se) + "," + str(corr_mean) + "," + str(corr_se) + "," + str(binder_mean) + "," + str(binder_se) + \
+        "," + str(potential_se) + "," + str(corr_mean) + "," + str(corr_se) + "," + str(binder_mean) + "," + str(binder_error) + \
         "," + str(energy_mean) + "," + str(energy_se) + "\n"
 
     out_header_1 = "N = {}, l = {}, Steps = {}\n".format(N, l, sim_steps)
@@ -111,7 +120,7 @@ def process_estimator_outputs(dt_folder):
     outfile = os.path.join(dt_folder, "Parameter Sweep.csv")
     with open(outfile, 'w') as f:
         f.write(out_header_line)
-        f.write("g,T,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Ratio Mean, Binder Ratio Error, Energy Mean, Energy Error\n")
+        f.write("g,T,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Mean, Binder Error, Energy Mean, Energy Error\n")
         for i in range(len(g_T_pair_list)):
             g_T_pair = g_T_pair_list[i]
             g = g_T_pair[0]
@@ -132,11 +141,11 @@ def process_estimator_outputs(dt_folder):
             energy_err_list = list(map(lambda x :float(x[1]), energy_data_g_T))
             filename_potential = 'Potential Energy Fit (g = {}, T = {}).png'.format(g, T)
             filename_correlation = 'Correlation Fit (g = {}, T = {}).png'.format(g, T)
-            filename_binder = 'Binder Fit (g = {}, T = {}).png'.format(g, T)
+            filename_binder = 'Binder Ratio Fit (g = {}, T = {}).png'.format(g, T)
             filename_energy = 'Energy Fit (g = {}, T = {}).png'.format(g, T)
             potential_fit_results = extrapolate_results(tau_list, potential_mean_list, func_pair, 100, potential_err_list, 'V', filename_potential, os.path.join(dt_folder, filename_potential))
             corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_pair, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation))
-            binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_pair, 100, binder_err_list, 'Binder', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=True)
+            binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_pair, 100, binder_err_list, 'Binder Ratio', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=False)
             energy_fit_results = extrapolate_results(tau_list, energy_mean_list, func_pair, 100, energy_err_list, 'Energy', filename_energy, os.path.join(dt_folder, filename_energy))
             f.write(str(g) + "," + str(T) + "," + str(potential_fit_results[1][-1]) + "," + \
                     str(potential_fit_results[2]) + "," + str(corr_fit_results[1][-1]) + "," + \
@@ -146,9 +155,13 @@ def process_estimator_outputs(dt_folder):
 
     return 0
 
-def process_parameter_sweeps(dt_folder):
-
-    inFile = os.path.join(dt_folder, "Parameter Sweep.csv")
+def process_parameter_sweeps(dt_folder, cumulative):
+    
+    if cumulative: 
+        file_name = "Parameter Sweep Cumulative.csv"
+    else: 
+        file_name = "Parameter Sweep.csv"
+    inFile = os.path.join(dt_folder, file_name)
     T_list = []
     g_list = []
     data_list = []
@@ -187,7 +200,8 @@ def process_parameter_sweeps(dt_folder):
         energy_mean_list = list(map(lambda x :float(x[6]), data_T_list))
         energy_error_list = list(map(lambda x :float(x[7]), data_T_list))
         g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list, energy_mean_list, energy_error_list = \
-            zip(*sorted(zip(g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list, energy_mean_list, energy_error_list)))
+            zip(*sorted(zip(g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list,
+                            energy_mean_list, energy_error_list)))
         
         plt.figure()
         plt.plot(g_T_list, potential_mean_list)
@@ -265,13 +279,18 @@ def extrapolate_results(x_pts, y_pts, func, num_pts_out, error, ylabel, title, f
         plt.close()
 
     else:
-        fit_x = [x_pts[-1]]
-        fit_y = [y_pts[-1]]
-        err = error[-1]
+        x_pts_sorted, y_pts_sorted = zip(*sorted(zip(x_pts, y_pts)))
+        x_pts_sorted, error_sorted = zip(*sorted(zip(x_pts, error)))
+        fit_x = [x_pts_sorted[0]]
+        fit_y = [y_pts_sorted[0]]
+        err = error_sorted[0]
 
     if use_pts:
-        fit_x = [x_pts[-1]]
-        fit_y = [y_pts[-1]]
+        x_pts_sorted, y_pts_sorted = zip(*sorted(zip(x_pts, y_pts)))
+        x_pts_sorted, error_sorted = zip(*sorted(zip(x_pts, error)))
+        fit_x = [x_pts_sorted[0]]
+        fit_y = [y_pts_sorted[0]]
+        err = error_sorted[0]
 
     return fit_x, fit_y, err
 
@@ -309,9 +328,84 @@ def calculateError_byBinning(arr):
 def func_pair(x, a, b):
     return a*x*x*x + b
 
+def jack_knife_samples(decorrelation_time, h_vec, block_size=50):
+
+    h_vec = np.array(h_vec[decorrelation_time:])
+    #block_size = decorrelation_time
+    total_pts = np.size(h_vec)
+
+    num_pts_to_use = int(np.floor(total_pts/block_size) * block_size)
+    num_blocks = int(num_pts_to_use/block_size)
+
+    h_vec = h_vec[(total_pts - num_pts_to_use):]
+    block_data = h_vec.reshape((num_blocks, block_size))
+
+    samples = np.zeros((num_blocks))
+    for i in range(num_blocks):
+        samples[i] = block_data[i,block_size-1]
+
+    return samples, num_blocks
+
+def calculate_binder_jk_estimates(samples_num, samples_denom, num_blocks):
+
+    j1_mean_array = np.zeros((num_blocks))
+    j2_mean_array = np.zeros((num_blocks))
+    func_array = np.zeros((num_blocks))
+    full_mean_num = np.mean(samples_num)
+    full_mean_denom = np.mean(samples_denom)
+
+    for i in range(num_blocks):
+        j1_mean_array[i] = ((full_mean_num * num_blocks) - samples_num[i])/(num_blocks-1)
+        j2_mean_array[i] = ((full_mean_denom * num_blocks) - samples_denom[i])/(num_blocks-1)
+        func_array[i] = func_binder_ratio(j1_mean_array[i], j2_mean_array[i])
+    
+    func_mean_jk = np.mean(func_array)
+    func_std_dev_jk = np.std(func_array)
+    func_std_error_jk = np.sqrt((num_blocks-1)) * func_std_dev_jk
+
+    func_mean = num_blocks * func_binder_ratio(full_mean_num, full_mean_denom) - (num_blocks - 1)*func_mean_jk
+
+    return func_mean, func_std_error_jk
+
+def func_binder_ratio(num, denom):
+
+    return 1.0 - (num/(3.0*(denom**2)))
+
+def combine_parameter_sweeps(dt_folder1, dt_folder2):
+
+    inFile1 = os.path.join(dt_folder1, "Parameter Sweep.csv")
+    inFile2 = os.path.join(dt_folder2, "Parameter Sweep.csv")
+
+    data_1 = np.loadtxt(inFile1, delimiter=",", skiprows=2)
+    data_2 = np.loadtxt(inFile2, delimiter=",", skiprows=2)
+
+    data = np.zeros(np.shape(data_1))
+    for i in range(np.shape(data_1)[0]):
+        data[i, 0] = data_1[i, 0]
+        data[i, 1] = data_1[i, 1]
+
+    for i in range(4):
+        for j in range(np.shape(data_1)[0]):
+            data[j, 2+2*i] = 0.5*(data_1[j, 2+2*i] + data_2[j, 2+2*i])
+            data[j, 2+2*i + 1] = 0.5*np.sqrt((data_1[j,2+2*i+1])**2 + (data_2[j,2+2*i+1])**2)
+
+    with open(inFile1, "r") as f:
+        header_txt = f.readline()
+        header_txt += f.readline().strip("\n")
+
+    np.savetxt(os.path.join(dt_folder_2, "Parameter Sweep Cumulative.csv"), data, delimiter=",", header=header_txt)
+
+    return 0
+
 if __name__=="__main__":
     
-    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/22_03_2024_22_08_16"
-    process_mc_outputs(dt_folder)
-    process_estimator_outputs(dt_folder)
-    process_parameter_sweeps(dt_folder)
+    dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/22_03_2024_22_08_16"
+    dt_folder_2 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/15_07_2024_05_49_33"
+    process_mc_outputs(dt_folder_1)
+    process_estimator_outputs(dt_folder_1)
+    process_parameter_sweeps(dt_folder_1, cumulative=False)
+
+    process_mc_outputs(dt_folder_2)
+    process_estimator_outputs(dt_folder_2)
+    combine_parameter_sweeps(dt_folder_1, dt_folder_2)
+    process_parameter_sweeps(dt_folder_2, cumulative=True)

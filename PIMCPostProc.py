@@ -49,6 +49,8 @@ def process_mc_outputs(dt_folder):
         binder_denom_mean, binder_denom_se = calculateError_byBinning(binder_denom_array)
         binder_num_mean, binder_num_se = calculateError_byBinning(binder_num_array)
         binder_mean = 1.0 - binder_num_mean/(3.0 * (binder_denom_mean**2))
+        # TODO: Figure out correct statistical error for binder
+        #binder_se = binder_denom_se/(N**2) + binder_num_se/(N**4)
         binder_se = binder_denom_se/(N**2)
         tau = 1.0/(float(T) * float(P))
         str_data_out += str(g) + "," + str(T) + "," + str(P) + "," + str(tau) + "," + str(potential_mean) + \
@@ -233,14 +235,18 @@ def extrapolate_results(x_pts, y_pts, func, num_pts_out, error, ylabel, title, f
         plt.close()
 
     else:
-        fit_x = [x_pts[-1]]
-        fit_y = [y_pts[-1]]
-        err = error[-1]
+        x_pts_sorted, y_pts_sorted = zip(*sorted(zip(x_pts, y_pts)))
+        x_pts_sorted, error_sorted = zip(*sorted(zip(x_pts, error)))
+        fit_x = [x_pts_sorted[0]]
+        fit_y = [y_pts_sorted[0]]
+        err = error_sorted[0]
 
     if use_pts:
-        fit_x = [x_pts[-1]]
-        fit_y = [y_pts[-1]]
-        err = error[-1]
+        x_pts_sorted, y_pts_sorted = zip(*sorted(zip(x_pts, y_pts)))
+        x_pts_sorted, error_sorted = zip(*sorted(zip(x_pts, error)))
+        fit_x = [x_pts_sorted[0]]
+        fit_y = [y_pts_sorted[0]]
+        err = error_sorted[0]
 
     return fit_x, fit_y, err
 
@@ -280,7 +286,7 @@ def func_pair(x, a, b):
 
 if __name__=="__main__":
     
-    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIMC/23_03_2024_12_17_07"
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIMC/15_07_2024_10_59_24"
     process_mc_outputs(dt_folder)
     process_estimator_outputs(dt_folder)
-    process_parameter_sweeps(dt_folder)
+    #process_parameter_sweeps(dt_folder)
