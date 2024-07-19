@@ -17,7 +17,6 @@ private:
     std::vector<double> stepwiseCorrelation;
     std::vector<double> stepwisePotential;
     std::vector<double> stepwiseBinder;
-    std::vector<double> stepwiseKinetic;
 
     int lMax;
     Grid phiGrid;
@@ -72,15 +71,12 @@ public:
             stepPotential += (sin(phi_i) * sin(phi_j) - 2.0 * cos(phi_i) * cos(phi_j));
             stepCorrelation += cos(phi_i - phi_j);
             stepBinder += cos(phi_j);
-            stepKinetic += phi_j * (sin(phi_i) * cos(phi_j) + 2.0 * cos(phi_i) * sin(phi_j));
-            stepKinetic += phi_i * (cos(phi_i) * sin(phi_j) + 2.0 * sin(phi_i) * cos(phi_j));
         }
         double binderRatio = std::pow(stepBinder, 2);
 
         stepwisePotential.push_back(couplingStrength * stepPotential);
         stepwiseCorrelation.push_back(stepCorrelation);
         stepwiseBinder.push_back(binderRatio);
-        stepwiseKinetic.push_back(0.5*couplingStrength*stepKinetic);
     }
 
     void outputStepData(){
@@ -92,27 +88,20 @@ public:
                 ", Block = " + std::to_string(blockNum) + ", Number of Blocks = " +
                 std::to_string(numBlocks) + ", Number of Steps = " + std::to_string(simulationSteps) +
                 "\n";
-        header += "MC Step, Potential Energy, Correlation, Binder Ratio, Kinetic Energy\n";
+        header += "MC Step, Potential Energy, Correlation, Binder Ratio\n";
         std::ofstream ofs(filePath);
         ofs << header;
         double potential_sum = 0.0;
-        double kinetic_sum = 0.0;
         for (int i = 0; i < simulationSteps; i++){
             ofs << std::to_string(i+1) << "," << std::to_string(stepwisePotential.at(i))
             << "," << std::to_string(stepwiseCorrelation.at(i))
-            << "," << std::to_string(stepwiseBinder.at(i))
-            << "," << std::to_string(stepwiseKinetic.at(i)) << "\n";
+            << "," << std::to_string(stepwiseBinder.at(i)) << "\n";
             potential_sum += stepwisePotential.at(i);
-            kinetic_sum += stepwiseKinetic.at(i);
         }
         double potential_avg = potential_sum/simulationSteps;
-        double kinetic_avg = kinetic_sum/simulationSteps;
-        double energy_avg = -kinetic_avg + potential_avg;
         ofs.close();
 
         std::cout << "Potential Average = " << potential_avg << "\n";
-        std::cout << "Kinetic Average = " << kinetic_avg << "\n";
-        std::cout << "Energy Average = " << energy_avg << "\n";
     }
 
     Estimators(const int &sim_steps, const int &num_rotors, const int &num_beads, const double &coupling_strength,

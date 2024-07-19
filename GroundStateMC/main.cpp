@@ -396,7 +396,7 @@ int main() {
     std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
     */
-
+    /*
     std::vector<InputParamters> simulation_params_1;
     MCSimulator mcSimulations_1 = MCSimulator();
 
@@ -408,6 +408,7 @@ int main() {
     simulation_params_1.push_back(InputParamters(p_1, g, sim_T, N));
     std::thread thread_1(&MCSimulator::iterateParamters, &mcSimulations_1, simulation_params_1);
     thread_1.join();
+    */
 
     return 0;
 }
