@@ -28,7 +28,7 @@ private:
 
 public:
 
-    void updateAllProps(const std::vector<std::vector<int>> &stepConfigurations) {
+    void updateAllProps(const std::vector<std::vector<int>> &stepConfigurations, const int &configSign) {
 
         std::vector<int> middleBeadConfigs = stepConfigurations.at(midBeadIndex);
         std::vector<int> finalBeadConfigs = stepConfigurations.at(numBeads);
@@ -55,10 +55,10 @@ public:
         }
         double binderRatio = std::pow(stepBinder, 2);
 
-        stepwisePotential.push_back(couplingStrength * stepPotential);
-        stepwiseCorrelation.push_back(stepCorrelation);
-        stepwiseBinder.push_back(binderRatio);
-        stepwiseEnergy.push_back(stepEnergy);
+        stepwisePotential.push_back(configSign * couplingStrength * stepPotential);
+        stepwiseCorrelation.push_back(configSign * stepCorrelation);
+        stepwiseBinder.push_back(configSign * binderRatio);
+        stepwiseEnergy.push_back(configSign * couplingStrength * stepEnergy); //Before 24th August 2024, the coupling strength wasn't multiplied by the energy here
     }
 
     void outputStepData(){
@@ -96,17 +96,16 @@ public:
                              ", l = " + std::to_string(lMax) +
                              ", Number of Steps = " + std::to_string(simulationSteps) +
                              "\n";
-        header += "MC Step, Bead Number, Sector, Rotor Number, Rotor Index\n";
+        header += "MC Step, Bead Number, Rotor Number, Rotor Index\n";
 
         // TODO: No need for sector here
         std::ofstream ofs(filePath);
         ofs << header;
         for (int i = 0; i < simulationSteps; i++){
-            for (int j = 0; j < numBeads; j++){
+            for (int j = 0; j < numBeads+1; j++){
                 for (int k = 0; k < numRotors; k++){
                     ofs << std::to_string(i+1);
                     ofs << "," << std::to_string(j+1);
-                    ofs << "," << "A";
                     ofs << "," << std::to_string(k+1);
                     ofs << "," << std::to_string(phi_configs.at(i).at(j).at(k));
                     ofs << "\n";

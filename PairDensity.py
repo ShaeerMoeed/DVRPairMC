@@ -155,24 +155,53 @@ def write_densities(parent_dir, l, g_list, test_props, T):
 
         prop_k = np.matmul(np.matmul(evecs_k, prop_k_diag), np.transpose(evecs_k))
 
-        prop_2_k = np.kron(prop_k, prop_k)
         num_grid_pts = 2 * l + 1
 
+        for i in range(num_grid_pts):
+            for j in range(num_grid_pts):
+                if abs(prop_k[i,j]) < 0.0:
+                    print("Negative free density element for T = {}, g = {}".format(T,g))
+
+        prop_2_k = np.kron(prop_k, prop_k)
+
+        '''
+        for i in range(num_grid_pts**2):
+            for j in range(num_grid_pts**2):
+                if abs(prop_2_h[i,j]) < 1e-15:
+                    prop_2_h[i,j] = 0.0
+                if abs(prop_2_k[i,j]) < 1e-15:
+                    prop_2_k[i,j] = 0.0
+        '''
+
         prop_pair = np.divide(prop_2_h, prop_2_k)
+        prop_pair_sgn = np.ones(np.shape(prop_pair), dtype=np.int64)
         density_negative = False
         if test_props:
             for i in range(num_grid_pts**2):
                 for j in range(num_grid_pts**2):
                     if prop_pair[i,j] < 0.0:
                         print("Negative pair density element for T = {}, g = {}".format(T,g))
-                        density_negative = True
+                        i1 = i//num_grid_pts
+                        i2 = i&num_grid_pts
+                        j1 = j//num_grid_pts
+                        j2 = j%num_grid_pts
+                        if abs(prop_2_h[i,j]) < 1e-15:
+                            prop_pair[i,j] = abs(prop_pair[i,j])
+                            prop_pair_sgn[i,j] = -1
+                        else: 
+                            print(prop_pair[i,j], " for ", i, j)
+                            print("prop_2_h[i,j] <= 0")
+                            print(prop_2_h[i,j])
+                            print(i1, i2, j1, j2)
+                            density_negative = True
                     if prop_2_k[i, j] < 0.0:
                         print("Negative free density element for T = {}, g = {}".format(T,g))
                         density_negative = True
-
+                        
         if not density_negative:
             write_file(parent_dir, "Pair", prop_pair, l, T, g)
             write_file(parent_dir, "Free", prop_k, l, T, g)
+            write_file(parent_dir, "Sign", prop_pair_sgn, l, T, g)
 
     return 0
 
@@ -182,7 +211,7 @@ def write_file(parent_dir, density_name, density_matrix, l, T, g):
     filepath = os.path.join(parent_dir, file_name)
 
     num_grid_pts = 2*l+1
-    if density_name == "Pair":
+    if density_name == "Pair" or density_name == "Sign":
         dims = num_grid_pts**2
     elif density_name == "Free":
         dims = num_grid_pts
@@ -205,15 +234,55 @@ if __name__ == "__main__":
     '''T_list = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
     l = 10
     g_list = [1.0, 1.5, 2.0]'''
-    T_list = [1.4, 1.6, 1.8]
-    l = 4
-    g_list = [0.3, 0.4, 0.5, 0.6]
+    
+    '''
+    # This breaks because m_max is too small (negative exp(-tau K) matrix elements in position basis)
+    T_list = [7.0]
+    l = 3
+    g_list = [0.5, 0.6]
 
+    tau_list = [1.0/(T) for T in T_list]
+    N = 2
+    pool = multiprocessing.Pool()
+    parent_dir = ""
+    pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
+
+    # This fixes the above problem (increasing m_max)
+    T_list = [7.0]
+    l = 10
+    g_list = [0.5, 0.6]
+
+    tau_list = [1.0/(T) for T in T_list]
+    N = 2
+    pool = multiprocessing.Pool()
+    parent_dir = ""
+    pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
+
+    # Here we ecounter the same problem with the two-body H
+    T_list = [8.0]
+    l = 10
+    g_list = [0.5, 0.6]
+
+    tau_list = [1.0/(T) for T in T_list]
+    N = 2
+    pool = multiprocessing.Pool()
+    parent_dir = ""
+    pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
+    '''
+
+    '''
+    # Increasing m_max has no effect but the negative values of the pair propagator correspond to small numbers in exp(-tau H)
+    T_list = [8.0, 9.0, 10.0]
+    l = 14
+    g_list = [0.5, 0.6]
+    
     tau_list = [1.0/(T) for T in T_list]
     N = 2
     pool = multiprocessing.Pool()
     parent_dir = "/Users/shaeermoeed/Github/DVRPairMC/ProbabilityDensities"
     pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
+    '''
+
     '''
     e0_list = pool.map(partial(pair_prop_test, g, l), P_list)
     print(e0_list)
@@ -223,4 +292,46 @@ if __name__ == "__main__":
     plt.scatter(tau_list, e0_list)
     plt.show()
     '''
+
+    # For pair vs primitive calculation
+    '''
+    #T_list = [3.0, 4.0, 4.2]
+    T_list = [1.0, 1.4, 1.8, 2.2, 2.6, 3.0, 3.4, 3.8]
+    l = 5
+    g_list = [1.0]
+    
+    tau_list = [1.0/(T) for T in T_list]
+    N = 2
+    pool = multiprocessing.Pool()
+    parent_dir = "/Users/shaeermoeed/Github/DVRPairMC/ProbabilityDensities"
+    pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
+    '''
+
+    '''
+    # For chemical potential
+    T_list = [2.0, 4.0, 6.0]
+    l = 10
+    #g_list = [1.0]
+    g_list = [0.1, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    
+    tau_list = [1.0/(T) for T in T_list]
+    N = 2
+    pool = multiprocessing.Pool()
+    parent_dir = "/Users/shaeermoeed/Github/DVRPairMC/ProbabilityDensities"
+    pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
+    '''
+
+    T_list = [6.0]
+    l = 10
+    g_list = [2.0]
+
+    tau_list = [1.0/(T) for T in T_list]
+    N = 2
+    pool = multiprocessing.Pool()
+    parent_dir = "/Users/shaeermoeed/Github/DVRPairMC/ProbabilityDensities"
+    pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
+
+    
+
+
 

@@ -3,7 +3,6 @@ import math
 import os
 from scipy.optimize import curve_fit
 from matplotlib import pyplot as plt
-import copy
 
 # Currently, this only supports single block MC (unclear whether we will need to break it into multiple blocks)
 
@@ -13,7 +12,7 @@ def process_mc_outputs(dt_folder):
     outFile = os.path.join(dt_folder, "Estimator Statistics.csv")
     
     str_data_out = ""
-    out_header_2 = "g,T,P,tau,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Mean, Binder Error, Energy Mean, Energy Error\n"
+    out_header_2 = "N,T,P,tau,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Mean, Binder Error, Energy Mean, Energy Error\n"
     for i in range(len(parameter_sets)):
         parameter_file_id = parameter_sets[i]
         if parameter_file_id[-3:] == "csv" or parameter_file_id[-3:] == "png" or parameter_file_id[-3:] == "txt":
@@ -46,66 +45,42 @@ def process_mc_outputs(dt_folder):
 
         potential_mean, potential_se = calculateError_byBinning(potential_array)
 
-        '''
         corr_mean, corr_se = calculateError_byBinning(corr_array)
-        corr_jk_samples, num_blocks = jack_knife_samples(5000, corr_array, 1)
+        corr_jk_samples, num_blocks = jack_knife_samples(5000, corr_array, 20)
         corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N) 
-        '''
 
         #binder_mean, binder_se = calculateError_byBinning(binder_array)
         binder_denom_array = np.copy(binder_array)
-        binder_denom_array = list(map(lambda x: x/(float(N)**2), binder_denom_array))
-        binder_num_array = []
-        for i in range(np.shape(binder_array)[0]):
-            if binder_array[i] < 0:
-                binder_num_array.append(-(((binder_array[i])**2)/(float(N)**4)))
-            else:
-                binder_num_array.append((((binder_array[i])**2)/(float(N)**4)))
+        binder_num_array = list(map(lambda x :x**2, binder_array))
 
-        '''
-        if dt_folder == "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/22_03_2024_22_08_16":
-            if (g == 0.5 or g == 0.6 or g == 0.3 or g == 1.0): 
-                plt.figure()
-                plt.plot(binder_array)
-                plt.title("g = {}".format(g))
-                plt.show()
-        '''
-
-        if g < 0.49: 
-            binder_num_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/5.0)), binder_num_array, 5)
-            binder_denom_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/5.0)), binder_denom_array, 5)
+        if g <= 0.61:
+            binder_num_jk_samples, num_blocks = jack_knife_samples(20000, binder_num_array, 5)
+            binder_denom_jk_samples, num_blocks = jack_knife_samples(20000, binder_denom_array, 5)
             binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks)
-            corr_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(corr_array)[0])/5.0)), corr_array, 5)
-            corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N) 
-        elif g > 0.61: 
+        if g > 0.61:
             binder_num_jk_samples, num_blocks = jack_knife_samples(1, binder_num_array, 5)
             binder_denom_jk_samples, num_blocks = jack_knife_samples(1, binder_denom_array, 5)
             binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks) 
-            corr_jk_samples, num_blocks = jack_knife_samples(1, corr_array, 5)
-            corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N) 
-        else:
-            binder_num_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/1.002)), binder_num_array, 5)
-            binder_denom_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/1.002)), binder_denom_array, 5)
-            binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks)
-            corr_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(corr_array)[0])/2)), corr_array, 50)
-            corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N)
 
         '''
         binder_denom_mean, binder_denom_se = calculateError_byBinning(binder_denom_array)
         binder_num_mean, binder_num_se = calculateError_byBinning(binder_num_array)
         '''
-        corr_mean, corr_se = calculateError_byBinning(corr_array[10000:])
+
         #binder_mean = 1.0 - binder_num_mean/(3.0 * (binder_denom_mean**2))
         # TODO: Figure out correct statistical error for binder
         #binder_se = binder_denom_se/(N**2)
 
-        energy_mean, energy_se = calculateError_byBinning(energy_array)
+        #energy_array = energy_array[5000:]
+        energy_mean, energy_se = calculateError_byBinning(energy_array[5000:])
+        #e0_jk_samples, num_blocks = jack_knife_samples(int(np.shape(energy_array)[0]/10), energy_array, 5)
+        #energy_mean, energy_se = calculate_energy_jk_estimates(e0_jk_samples, num_blocks) 
         tau = 1.0/(float(T) * float(P))
-        str_data_out += str(g) + "," + str(T) + "," + str(P) + "," + str(tau) + "," + str(potential_mean) + \
+        str_data_out += str(N) + "," + str(T) + "," + str(P) + "," + str(tau) + "," + str(potential_mean) + \
         "," + str(potential_se) + "," + str(corr_mean) + "," + str(corr_se) + "," + str(binder_mean) + "," + str(binder_error) + \
         "," + str(energy_mean) + "," + str(energy_se) + "\n"
 
-    out_header_1 = "N = {}, l = {}, Steps = {}\n".format(N, l, sim_steps)
+    out_header_1 = "g = {}, l = {}, Steps = {}\n".format(g, l, sim_steps)
     out_header = out_header_1 + out_header_2
     with open(outFile, 'w') as f:
         f.write(out_header)
@@ -113,10 +88,10 @@ def process_mc_outputs(dt_folder):
 
     return 0
 
-def process_estimator_outputs(dt_folder, fit_transition=True):
+def process_estimator_outputs(dt_folder):
 
     inFile = os.path.join(dt_folder, "Estimator Statistics.csv")
-    g_T_pair_list = []
+    N_T_pair_list = []
     potential_data = []
     corr_data = []
     binder_data = []
@@ -130,63 +105,64 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
                 out_header_line = line
             if line_count > 2: 
                 data = line.strip().split(",")
-                g_T_pair = (float(data[0]), float(data[1]))
-                P_data_g_T = (float(data[2]), float(data[3]))
-                potential_data_g_T = (float(data[4]), float(data[5]))
-                corr_data_g_T = (float(data[6]), float(data[7]))
-                binder_data_g_T = (float(data[8]), float(data[9]))
-                energy_data_g_T = (float(data[10]), float(data[11]))
-                if g_T_pair not in g_T_pair_list:
-                    g_T_pair_list.append(g_T_pair)
-                    P_data.append([P_data_g_T])
-                    potential_data.append([potential_data_g_T])
-                    corr_data.append([corr_data_g_T])
-                    binder_data.append([binder_data_g_T])
-                    energy_data.append([energy_data_g_T])
+                N_T_pair = (float(data[0]), float(data[1]))
+                P_data_N_T = (float(data[2]), float(data[3]))
+                potential_data_N_T = (float(data[4]), float(data[5]))
+                corr_data_N_T = (float(data[6]), float(data[7]))
+                binder_data_N_T = (float(data[8]), float(data[9]))
+                energy_data_N_T = (float(data[10]), float(data[11]))
+                if N_T_pair not in N_T_pair_list:
+                    N_T_pair_list.append(N_T_pair)
+                    P_data.append([P_data_N_T])
+                    potential_data.append([potential_data_N_T])
+                    corr_data.append([corr_data_N_T])
+                    binder_data.append([binder_data_N_T])
+                    energy_data.append([energy_data_N_T])
                 else: 
-                    for i in range(len(g_T_pair_list)):
-                        if g_T_pair_list[i] == g_T_pair:
-                            P_data[i].append(P_data_g_T)
-                            potential_data[i].append(potential_data_g_T)
-                            corr_data[i].append(corr_data_g_T)
-                            binder_data[i].append(binder_data_g_T)
-                            energy_data[i].append(energy_data_g_T)
+                    for i in range(len(N_T_pair_list)):
+                        if N_T_pair_list[i] == N_T_pair:
+                            P_data[i].append(P_data_N_T)
+                            potential_data[i].append(potential_data_N_T)
+                            corr_data[i].append(corr_data_N_T)
+                            binder_data[i].append(binder_data_N_T)
+                            energy_data[i].append(energy_data_N_T)
                             break
-
+    
+    g = float(out_header_line.split(",")[0].split("=")[1].strip())
     outfile = os.path.join(dt_folder, "Parameter Sweep.csv")
     with open(outfile, 'w') as f:
         f.write(out_header_line)
-        f.write("g,T,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Mean, Binder Error, Energy Mean, Energy Error\n")
-        for i in range(len(g_T_pair_list)):
-            g_T_pair = g_T_pair_list[i]
-            g = g_T_pair[0]
-            T = g_T_pair[1]
-            P_data_g_T = P_data[i]
-            potential_data_g_T = potential_data[i]
-            corr_data_g_T = corr_data[i]
-            binder_data_g_T = binder_data[i]
-            energy_data_g_T = energy_data[i]
-            tau_list = list(map(lambda x :float(x[1]), P_data_g_T))
-            potential_mean_list = list(map(lambda x :float(x[0]), potential_data_g_T))
-            potential_err_list = list(map(lambda x :float(x[1]), potential_data_g_T))
-            corr_mean_list = list(map(lambda x :float(x[0]), corr_data_g_T))
-            corr_err_list = list(map(lambda x :float(x[1]), corr_data_g_T))
-            binder_mean_list = list(map(lambda x :float(x[0]), binder_data_g_T))
-            binder_err_list = list(map(lambda x :float(x[1]), binder_data_g_T))
-            energy_mean_list = list(map(lambda x :float(x[0]), energy_data_g_T))
-            energy_err_list = list(map(lambda x :float(x[1]), energy_data_g_T))
-            filename_potential = 'Potential Energy Fit (g = {}, T = {}).png'.format(g, T)
-            filename_correlation = 'Correlation Fit (g = {}, T = {}).png'.format(g, T)
-            filename_binder = 'Binder Ratio Fit (g = {}, T = {}).png'.format(g, T)
-            filename_energy = 'Energy Fit (g = {}, T = {}).png'.format(g, T)
+        f.write("N,T,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Mean, Binder Error, Energy Mean, Energy Error\n")
+        for i in range(len(N_T_pair_list)):
+            N_T_pair = N_T_pair_list[i]
+            N = N_T_pair[0]
+            T = N_T_pair[1]
+            P_data_N_T = P_data[i]
+            potential_data_N_T = potential_data[i]
+            corr_data_N_T = corr_data[i]
+            binder_data_N_T = binder_data[i]
+            energy_data_N_T = energy_data[i]
+            tau_list = list(map(lambda x :float(x[1]), P_data_N_T))
+            potential_mean_list = list(map(lambda x :float(x[0]), potential_data_N_T))
+            potential_err_list = list(map(lambda x :float(x[1]), potential_data_N_T))
+            corr_mean_list = list(map(lambda x :float(x[0]), corr_data_N_T))
+            corr_err_list = list(map(lambda x :float(x[1]), corr_data_N_T))
+            binder_mean_list = list(map(lambda x :float(x[0]), binder_data_N_T))
+            binder_err_list = list(map(lambda x :float(x[1]), binder_data_N_T))
+            energy_mean_list = list(map(lambda x :float(x[0]), energy_data_N_T))
+            energy_err_list = list(map(lambda x :float(x[1]), energy_data_N_T))
+            filename_potential = 'Potential Energy Fit (N = {}, T = {}, g = {}).png'.format(N, T, g)
+            filename_correlation = 'Correlation Fit (N = {}, T = {}, g = {}).png'.format(N, T, g)
+            filename_binder = 'Binder Ratio Fit (N = {}, T = {}, g = {}).png'.format(N, T, g)
+            filename_energy = 'Energy Fit (N = {}, T = {}, g = {}).png'.format(N, T, g)
             potential_fit_results = extrapolate_results(tau_list, potential_mean_list, func_quadratic, 100, potential_err_list, 'V', filename_potential, os.path.join(dt_folder, filename_potential))
             
-            if fit_transition and (g == 0.5 or g == 0.6):
+            if g == 0.5 or g == 0.6:
+                binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_quadratic, 100, binder_err_list, 'Binder Ratio', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=False)
                 corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_linear, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=False)
             else:
-                corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_cubic, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=True)
-
-            binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_cubic, 100, binder_err_list, 'Binder Ratio', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=True)
+                corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_quadratic, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=True)
+                binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_quadratic, 100, binder_err_list, 'Binder Ratio', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=True)
             '''
             if g == 0.5 or g == 0.6:
                 binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_linear, 100, binder_err_list, 'Binder Ratio', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=False)
@@ -195,8 +171,8 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
                 corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_cubic, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=True)
                 binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_cubic, 100, binder_err_list, 'Binder Ratio', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=True)
             '''
-            energy_fit_results = extrapolate_results(tau_list, energy_mean_list, func_quadratic, 100, energy_err_list, 'Energy', filename_energy, os.path.join(dt_folder, filename_energy))
-            f.write(str(g) + "," + str(T) + "," + str(potential_fit_results[1][-1]) + "," + \
+            energy_fit_results = extrapolate_results(tau_list, energy_mean_list, func_quadratic, 100, energy_err_list, 'Energy', filename_energy, os.path.join(dt_folder, filename_energy), use_pts=False)
+            f.write(str(N) + "," + str(T) + "," + str(potential_fit_results[1][-1]) + "," + \
                     str(potential_fit_results[2]) + "," + str(corr_fit_results[1][-1]) + "," + \
                     str(corr_fit_results[2]) + "," + str(binder_fit_results[1][-1]) + "," + \
                     str(binder_fit_results[2]) + "," + str(energy_fit_results[1][-1]) + "," + \
@@ -212,7 +188,7 @@ def process_parameter_sweeps(dt_folder, cumulative):
         file_name = "Parameter Sweep.csv"
     inFile = os.path.join(dt_folder, file_name)
     T_list = []
-    g_list = []
+    N_list = []
     data_list = []
     with open(inFile, 'r') as f:
         line_count = 0
@@ -223,22 +199,22 @@ def process_parameter_sweeps(dt_folder, cumulative):
             if line_count > 2: 
                 data = line.strip().split(",")
                 T = float(data[1])
-                g = float(data[0])
+                N = float(data[0])
                 line_data = (float(data[2]), float(data[3]), float(data[4]), float(data[5]), float(data[6]), float(data[7]), float(data[8]), float(data[9]))
                 if T not in T_list:
                     T_list.append(T)
-                    g_list.append([g])
+                    N_list.append([N])
                     data_list.append([line_data])
                 else:
                     for i in range(len(T_list)):
                         if T_list[i] == T:
-                            g_list[i].append(g)
+                            N_list[i].append(N)
                             data_list[i].append(line_data)
                             break
     
     for i in range(len(T_list)):
         temperature=T_list[i]
-        g_T_list = g_list[i]
+        N_T_list = N_list[i]
         data_T_list = data_list[i]
         potential_mean_list = list(map(lambda x :float(x[0]), data_T_list))
         potential_error_list = list(map(lambda x :float(x[1]), data_T_list))
@@ -248,8 +224,8 @@ def process_parameter_sweeps(dt_folder, cumulative):
         binder_error_list = list(map(lambda x :float(x[5]), data_T_list))
         energy_mean_list = list(map(lambda x :float(x[6]), data_T_list))
         energy_error_list = list(map(lambda x :float(x[7]), data_T_list))
-        g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list, energy_mean_list, energy_error_list = \
-            zip(*sorted(zip(g_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list,
+        N_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list, energy_mean_list, energy_error_list = \
+            zip(*sorted(zip(N_T_list, potential_mean_list, potential_error_list, corr_mean_list, corr_error_list, binder_mean_list, binder_error_list,
                             energy_mean_list, energy_error_list)))
         
         if cumulative:
@@ -264,48 +240,45 @@ def process_parameter_sweeps(dt_folder, cumulative):
             energyPlotName = "Energy (T = {}).png".format(temperature)
         
         plt.figure()
-        plt.plot(g_T_list, potential_mean_list)
-        plt.scatter(g_T_list, potential_mean_list)
-        plt.errorbar(g_T_list, potential_mean_list, potential_error_list,capsize=5,fmt="none")
-        plt.title("Effect Of Coupling Strength On Potential (T = {})".format(temperature))
+        plt.plot(N_T_list, potential_mean_list)
+        plt.scatter(N_T_list, potential_mean_list)
+        plt.errorbar(N_T_list, potential_mean_list, potential_error_list,capsize=5,fmt="none")
+        plt.title("Effect Of Particle Number On Potential (T = {})".format(temperature))
         plt.ylabel("V")
-        plt.xlabel("g")
+        plt.xlabel("N")
         potentialPlotPath = os.path.join(dt_folder, potentialPlotName)
         plt.savefig(potentialPlotPath)
         plt.close()
 
         plt.figure()
-        plt.plot(g_T_list, corr_mean_list)
-        plt.scatter(g_T_list, corr_mean_list)
-        plt.errorbar(g_T_list,corr_mean_list,corr_error_list,capsize=5,fmt="none")
-        plt.title("Effect Of Coupling Strength On Correlation (T = {})".format(temperature))
+        plt.plot(N_T_list, corr_mean_list)
+        plt.scatter(N_T_list, corr_mean_list)
+        plt.errorbar(N_T_list,corr_mean_list,corr_error_list,capsize=5,fmt="none")
+        plt.title("Effect Of Particle Number On Correlation (T = {})".format(temperature))
         plt.ylabel("eiej")
-        plt.xlabel("g")
+        plt.xlabel("N")
         corrPlotPath = os.path.join(dt_folder, corrPlotName)
         plt.savefig(corrPlotPath)
         plt.close()
 
-        dmrg_g, dmrg_pol, dmrg_binder = np.loadtxt("/Users/shaeermoeed/Github/DVRPairMC/binder_x.txt", skiprows=4, unpack=True)
-
         plt.figure()
-        plt.plot(g_T_list, binder_mean_list)
-        plt.scatter(g_T_list, binder_mean_list)
-        plt.plot(dmrg_g, dmrg_binder, label="DMRG", color="C3")
-        plt.errorbar(g_T_list,binder_mean_list,binder_error_list,capsize=5,fmt="none")
-        plt.title("Effect Of Coupling Strength On Binder Ratio (T = {})".format(temperature))
+        plt.plot(N_T_list, binder_mean_list)
+        plt.scatter(N_T_list, binder_mean_list)
+        plt.errorbar(N_T_list,binder_mean_list,binder_error_list,capsize=5,fmt="none")
+        plt.title("Effect Of Particle Number On Binder Ratio (T = {})".format(temperature))
         plt.ylabel("Binder")
-        plt.xlabel("g")
+        plt.xlabel("N")
         binderPlotPath = os.path.join(dt_folder, binderPlotName)
         plt.savefig(binderPlotPath)
         plt.close()
 
         plt.figure()
-        plt.plot(g_T_list, energy_mean_list)
-        plt.scatter(g_T_list, energy_mean_list)
-        plt.errorbar(g_T_list,energy_mean_list,energy_error_list,capsize=5,fmt="none")
-        plt.title("Effect Of Coupling Strength On Energy (T = {})".format(temperature))
+        plt.plot(N_T_list, energy_mean_list)
+        plt.scatter(N_T_list, energy_mean_list)
+        plt.errorbar(N_T_list,energy_mean_list,energy_error_list,capsize=5,fmt="none")
+        plt.title("Effect Of Particle Number On Energy (T = {})".format(temperature))
         plt.ylabel("Energy")
-        plt.xlabel("g")
+        plt.xlabel("N")
         energyPlotPath = os.path.join(dt_folder, energyPlotName)
         plt.savefig(energyPlotPath)
 
@@ -405,6 +378,7 @@ def func_quadratic(x,a, b):
 
 def jack_knife_samples(decorrelation_time, h_vec, block_size=50):
 
+    # block_size-1 is the number of points that will be dropped between successive samples
     h_vec = np.array(h_vec[decorrelation_time:])
     #block_size = decorrelation_time
     total_pts = np.size(h_vec)
@@ -460,6 +434,24 @@ def calculate_corr_jk_estimates(jk_samples, num_blocks, num_rotors):
 
     return func_mean, func_std_error_jk
 
+def calculate_energy_jk_estimates(jk_samples, num_blocks):
+
+    jk_mean_array = np.zeros((num_blocks))
+    func_array = np.zeros((num_blocks))
+    full_mean = np.mean(jk_samples)
+
+    for i in range(num_blocks):
+        jk_mean_array[i] = ((full_mean * num_blocks) - jk_samples[i])/(num_blocks-1)
+        func_array[i] = jk_mean_array[i]
+    
+    func_mean_jk = np.mean(func_array)
+    func_std_dev_jk = np.std(func_array)
+    func_std_error_jk = np.sqrt((num_blocks-1)) * func_std_dev_jk
+
+    func_mean = num_blocks * (full_mean) - (num_blocks - 1)*func_mean_jk
+
+    return func_mean, func_std_error_jk
+
 def func_binder_ratio(num, denom):
 
     return 1.0 - (num/(3.0*(denom**2)))
@@ -494,75 +486,119 @@ def combine_parameter_sweeps(dt_folder1, dt_folder2, filename_1, filename_2):
 
     return 0
 
+def calculate_chemical_potential(folder, skip_pts_plot=0, cumulative=False):
+
+    if cumulative:
+        file_name = "Parameter Sweep Cumulative.csv"
+    else:
+        file_name = "Parameter Sweep.csv"
+    param_sweep_file = os.path.join(folder, file_name)
+    param_sweep_data = np.loadtxt(param_sweep_file, delimiter=",", skiprows=2, unpack=False)
+    energy_vals = param_sweep_data[:,-2]
+    energy_err = param_sweep_data[:, -1]
+    N_vals = param_sweep_data[:, 0]
+    N_vals_sorted, energy_vals_sorted, energy_err_sorted = zip(*sorted(zip(N_vals, energy_vals, energy_err)))
+    N_vals = np.array(N_vals_sorted)
+    energy_vals = np.array(energy_vals_sorted)
+    energy_err = np.array(energy_err_sorted)
+    chem_pot_results = np.zeros((len(N_vals), 3))
+    for j in range(len(N_vals)):
+        
+        '''
+        chem_pot_results[j, 1] = (energy_vals[j])/N_vals[j]
+        chem_pot_results[j, 2] = energy_err[j]/N_vals[j]
+        chem_pot_results[j, 0] = 1.0/(N_vals[j])
+        '''
+        '''
+        chem_pot_results[j, 1] = (energy_vals[j+5] - energy_vals[0])/(N_vals[j+5] - N_vals[0])
+        chem_pot_results[j, 2] = np.sqrt(energy_err[j+5]**2 + energy_err[0]**2)/(N_vals[j+5]- N_vals[0])
+        chem_pot_results[j, 0] = N_vals[j+5]
+        '''
+        chem_pot_results[j, 1] = (energy_vals[j])/N_vals[j]
+        chem_pot_results[j, 2] = energy_err[j]/N_vals[j]
+        chem_pot_results[j, 0] = N_vals[j]
+    
+    with open(param_sweep_file, "r") as f:
+        out_header = f.readline()
+    
+    print(chem_pot_results[:, 0])
+    out_header += "N, Chemical Potential, Chemical Potential Error"
+    out_file = os.path.join(folder, "Chemical Potential.csv")
+    np.savetxt(out_file, chem_pot_results, delimiter=",", header=out_header)
+
+    plt.figure()
+    plt.scatter(chem_pot_results[skip_pts_plot:-1, 0], chem_pot_results[skip_pts_plot:-1, 1])
+    plt.errorbar(chem_pot_results[skip_pts_plot:-1, 0], chem_pot_results[skip_pts_plot:-1, 1], chem_pot_results[skip_pts_plot:-1, 2], fmt="None", capsize=5)
+    plt.plot(chem_pot_results[skip_pts_plot:-1, 0], chem_pot_results[skip_pts_plot:-1, 1])
+    plt.title("Energy dependance on N")
+    plt.xlabel(r"$N$")
+    plt.ylabel(r"$E$")
+    plt.savefig(os.path.join(folder, "Chemical Potential.png"))
+
+    return 0
+
 if __name__=="__main__":
 
-    ''' Not used
-    # m_max = 5
-    dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/20_07_2024_01_02_35"
-    dt_folder_2 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/20_07_2024_16_15_52"
-    process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1)
-    process_parameter_sweeps(dt_folder_1, cumulative=False)
+    
+    # g=1.0
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_08_2024_13_47_08"
+    process_mc_outputs(dt_folder)
+    process_estimator_outputs(dt_folder)
+    process_parameter_sweeps(dt_folder, cumulative=False)
+    calculate_chemical_potential(dt_folder)
+
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_08_2024_16_00_14"
+    #process_mc_outputs(dt_folder)
+    #process_estimator_outputs(dt_folder)
+    #process_parameter_sweeps(dt_folder, cumulative=False)
+    calculate_chemical_potential(dt_folder)
+    
+
+    
+    g = 0.1
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_08_2024_19_00_40"
+    dt_folder_2 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/20_09_2024_08_54_57" #started with -1 config
+    dt_folder_3 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/06_10_2024_08_39_19" 
+    process_mc_outputs(dt_folder)
+    process_estimator_outputs(dt_folder)
     process_mc_outputs(dt_folder_2)
     process_estimator_outputs(dt_folder_2)
+    combine_parameter_sweeps(dt_folder, dt_folder_2, "Parameter Sweep.csv", "Parameter Sweep.csv")
     process_parameter_sweeps(dt_folder_2, cumulative=False)
-    combine_parameter_sweeps(dt_folder_1, dt_folder_2, "Parameter Sweep.csv", "Parameter Sweep.csv")
-    process_parameter_sweeps(dt_folder_2, cumulative=True)
-    '''
-    
-    # m_max = 10
-    dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/22_03_2024_22_08_16"
-    dt_folder_2 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/15_07_2024_05_49_33"
-    dt_folder_3 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/19_07_2024_17_48_46"
-    process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1,  fit_transition=False)
-    process_parameter_sweeps(dt_folder_1, cumulative=False)
-
-    process_mc_outputs(dt_folder_2)
-    process_estimator_outputs(dt_folder_2, fit_transition=False)
-
+    calculate_chemical_potential(dt_folder_2, cumulative=False)
     process_mc_outputs(dt_folder_3)
-    process_estimator_outputs(dt_folder_3, fit_transition=False)
-
-    combine_parameter_sweeps(dt_folder_1, dt_folder_2, "Parameter Sweep.csv", "Parameter Sweep.csv")
-    process_parameter_sweeps(dt_folder_2, cumulative=False)
-    process_parameter_sweeps(dt_folder_2, cumulative=True)
-
-    combine_parameter_sweeps(dt_folder_2, dt_folder_3, "Parameter Sweep Cumulative.csv", "Parameter Sweep.csv")
+    process_estimator_outputs(dt_folder_3)
     process_parameter_sweeps(dt_folder_3, cumulative=False)
-    process_parameter_sweeps(dt_folder_3, cumulative=True)
-
-    #m_max = 12
-    dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/20_07_2024_23_53_49"
-    process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1, fit_transition=True)
-    process_parameter_sweeps(dt_folder_1, cumulative=False)
+    calculate_chemical_potential(dt_folder_3, cumulative=False)
     
-    #Not used
-    '''
-    # m_max = 12 with P = 80
-    dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_07_2024_03_26_24"
-    process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1)
-    process_parameter_sweeps(dt_folder_1, cumulative=False)
-    '''
     
-    # m_max = 14 with P = 100
-    dt_folder_4 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/01_08_2024_18_11_46"
-    process_mc_outputs(dt_folder_4)
-    process_estimator_outputs(dt_folder_4, fit_transition=True)
-    process_parameter_sweeps(dt_folder_4, cumulative=False)
-
-    
-    import plot_corr
-
-    import plot_binder
-    
-
     '''
-    # m_max = 5, N=100 for pair vs primitive energy result (g=1.0) 
-    dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_08_2024_05_47_09"
-    process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1)
-    process_parameter_sweeps(dt_folder_1, cumulative=False)
+    # g = 0.3
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_08_2024_15_00_12"
+    process_mc_outputs(dt_folder)
+    process_estimator_outputs(dt_folder)
+    process_parameter_sweeps(dt_folder, cumulative=False)
+    calculate_chemical_potential(dt_folder)
+
+    # g = 0.2
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_08_2024_19_35_29"
+    process_mc_outputs(dt_folder)
+    process_estimator_outputs(dt_folder)
+    process_parameter_sweeps(dt_folder, cumulative=False)
+    calculate_chemical_potential(dt_folder)
+    
+    # g = 0.4
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/25_08_2024_05_06_14"
+    process_mc_outputs(dt_folder)
+    process_estimator_outputs(dt_folder)
+    process_parameter_sweeps(dt_folder, cumulative=False)
+    calculate_chemical_potential(dt_folder)
     '''
+
+    g = 0.5
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/25_08_2024_05_58_57"
+    process_mc_outputs(dt_folder)
+    process_estimator_outputs(dt_folder)
+    process_parameter_sweeps(dt_folder, cumulative=False)
+    calculate_chemical_potential(dt_folder)
+    

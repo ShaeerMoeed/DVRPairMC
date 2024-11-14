@@ -105,8 +105,8 @@ public:
         //observables.updateOrientationalCorrelation(initialConfigurations);
         //observables.updateBinderRatio(initialConfigurations);
         //observables.updatePotentialEnergy(initialConfigurations);
-
-        observables.updateAllProps(initialConfigurations);
+        int configSign = probabilityTables.extractConfigSign(initialConfigurations);
+        observables.updateAllProps(initialConfigurations, configSign);
 
     }
 
@@ -179,7 +179,7 @@ public:
         return nextConfigs;
     }
 
-    void integrate(){
+    void integrateWithSgn(){
 
         std::vector<std::vector<int>> currentStepConfigs = initialConfigurations;
         for (int i = 1; i < simulationSteps; i++){
@@ -196,8 +196,41 @@ public:
             //observables.updateBinderRatio(currentStepConfigs);
             //observables.updatePotentialEnergy(currentStepConfigs);
 
-            observables.updateAllProps(currentStepConfigs);
+            // Should have two different code paths (one which keeps track of the sign and one that does not)
+            int configSign = probabilityTables.extractConfigSign(currentStepConfigs);
+            observables.updateAllProps(currentStepConfigs, configSign);
+        }
 
+        observables.outputStepData();
+
+        if (diagnostics){
+            observables.outputDiagnostics(phiConfigurations);
+        }
+
+    }
+
+    void integrateWithoutSgn(){
+
+        int configSign=1;
+        std::vector<std::vector<int>> currentStepConfigs = initialConfigurations;
+        for (int i = 1; i < simulationSteps; i++){
+
+            std::vector<std::vector<int>> prevStepConfigs = currentStepConfigs;
+
+            currentStepConfigs = gibbsSample(prevStepConfigs);
+
+            if (diagnostics){
+                phiConfigurations.push_back(currentStepConfigs);
+            }
+
+            //observables.updateOrientationalCorrelation(currentStepConfigs);
+            //observables.updateBinderRatio(currentStepConfigs);
+            //observables.updatePotentialEnergy(currentStepConfigs);
+
+            // Should have two different code paths (one which keeps track of the sign and one that does not)
+            //int configSign = probabilityTables.extractConfigSign(currentStepConfigs);
+
+            observables.updateAllProps(currentStepConfigs, configSign);
         }
 
         observables.outputStepData();

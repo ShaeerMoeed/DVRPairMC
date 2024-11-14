@@ -286,7 +286,7 @@ def func_pair(x, a, b):
 
 if __name__=="__main__":
     
-    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIMC/15_07_2024_10_59_24"
-    process_mc_outputs(dt_folder)
-    process_estimator_outputs(dt_folder)
+    mc_out_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIMC/15_07_2024_10_59_24"
+    process_mc_outputs(mc_out_folder)
+    process_estimator_outputs(mc_out_folder)
     #process_parameter_sweeps(dt_folder)
