@@ -22,8 +22,8 @@ public:
 class MCSimulator{
 public:
 
-    std::string rootFolder = "/Users/shaeermoeed/Github/DVRPairMC/";
-    std::string densityFolder = rootFolder + "ProbabilityDensities/";
+    std::string rootFolder;
+    std::string densityFolder;
     int num_digits = 3;
     int block_num = 1;
     int num_blocks = 1;
@@ -34,18 +34,19 @@ public:
 
     std::string dt_folder;
 
-    MCSimulator(){
+    MCSimulator(const std::string &root_folder, const std::string &datetime_folder){
 
-        // Maybe worth passing in the datetime string using the python wrapper
-        auto time = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
-        auto today = std::chrono::floor<std::chrono::days>(time);
-        std::string datetime = std::format("{0:%d_%m_%Y}_{1:%H_%M_%S}",
-                                           std::chrono::year_month_day{today},
-                                           std::chrono::hh_mm_ss{time-today});
-        dt_folder = rootFolder + "Results/PIMC/" + datetime;
+        rootFolder = root_folder;
+        dt_folder = datetime_folder;
+        densityFolder = rootFolder + "ProbabilityDensities/";
+
+        // TODO: Remove Test from path for prod
+        /*
+        dt_folder = rootFolder + "Results/PIGS/Test/" + datetime;
+        */
 
         if (not std::filesystem::is_directory(dt_folder)){
-            std::filesystem::create_directory(dt_folder);
+            throw std::runtime_error("dt folder must exist\n");
         }
     }
 
@@ -104,6 +105,20 @@ public:
 
 int main() {
 
+    // Maybe worth passing in the datetime string using the python wrapper
+    auto time = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+    auto today = std::chrono::floor<std::chrono::days>(time);
+    std::string datetime = std::format("{0:%d_%m_%Y}_{1:%H_%M_%S}",
+                                       std::chrono::year_month_day{today},
+                                       std::chrono::hh_mm_ss{time-today});
+
+    std::string root_folder = "/Users/shaeermoeed/Github/DVRPairMC/";
+    std::string dt_folder = root_folder + "Results/PIMC/" + datetime;
+
+    if (not std::filesystem::is_directory(dt_folder)){
+        std::filesystem::create_directory(dt_folder);
+    }
+
     // TODO: Decide whether some post-processing (averages, errors etc.) should be computed by cpp (NO)
     // TODO: Add utilities for reading input file for parameters
     // TODO: Add utilities to main.cpp for creating the parent directory inside a results folder
@@ -146,16 +161,16 @@ int main() {
     std::vector<InputParamters> simulation_params_9;
     std::vector<InputParamters> simulation_params_10;
 
-    MCSimulator mcSimulations_1 = MCSimulator();
-    MCSimulator mcSimulations_2 = MCSimulator();
-    MCSimulator mcSimulations_3 = MCSimulator();
-    MCSimulator mcSimulations_4 = MCSimulator();
-    MCSimulator mcSimulations_5 = MCSimulator();
-    MCSimulator mcSimulations_6 = MCSimulator();
-    MCSimulator mcSimulations_7 = MCSimulator();
-    MCSimulator mcSimulations_8 = MCSimulator();
-    MCSimulator mcSimulations_9 = MCSimulator();
-    MCSimulator mcSimulations_10 = MCSimulator();
+    MCSimulator mcSimulations_1 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_2 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_3 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_4 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_5 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_6 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_7 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_8 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_9 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_10 = MCSimulator(root_folder, dt_folder);
 
     double sim_T = 1.0;
     int p_1 = 4;
@@ -251,7 +266,7 @@ int main() {
     */
 
     std::vector<InputParamters> simulation_params_1;
-    MCSimulator mcSimulations_1 = MCSimulator();
+    MCSimulator mcSimulations_1 = MCSimulator(root_folder, dt_folder);
 
     double sim_T = 1.0;
     int p_1 = 6;

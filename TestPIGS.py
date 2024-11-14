@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import multiprocessing
+from functools import partial
 
 def dvr_k(l):
 
@@ -74,6 +76,7 @@ def get_corr_vec(num_grid_pts):
 
 def get_binder(num_grid_pts):
 
+    # This might be incorrect.  
     binder_vec = np.zeros(num_grid_pts**3)
     for i in range(num_grid_pts):
         grid_pt_1 = 2 * np.pi * i/num_grid_pts
@@ -88,7 +91,7 @@ def get_binder(num_grid_pts):
 
     return binder_vec
 
-def prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec):
+def prop_n3_NMM_pair(l, g, T, corr_vec, potential_vec, P):
 
     k_1_body = dvr_k(l)
     v_2_body = dvr_v(l, g)
@@ -155,21 +158,17 @@ def prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec):
 
     v_mat = np.diag(potential_vec)
     corr_mat = np.diag(corr_vec)
-    binder_mat = np.diag(binder_vec)
 
     rho_dot_V = np.matmul(rho_beta_over_2,v_mat)
     rho_dot_corr = np.matmul(rho_beta_over_2,corr_mat)
-    rho_dot_binder = np.matmul(rho_beta_over_2,binder_mat)
 
     rho_dot_V_dot_rho = (delta_phi**3) * np.matmul(rho_dot_V, rho_beta_over_2)
     rho_dot_corr_dot_rho = (delta_phi**3) * np.matmul(rho_dot_corr, rho_beta_over_2)
-    rho_dot_binder_dot_rho = (delta_phi**3) * np.matmul(rho_dot_binder, rho_beta_over_2)
 
     rho_dot_E = np.matmul(rho_beta,potential_vec)
 
     v_exp = 0.0
     corr_exp = 0.0
-    binder_exp = 0.0
     partition_func = 0.0
     e_exp = 0.0
 
@@ -178,32 +177,40 @@ def prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec):
         for j in range(num_grid_pts**3):
             v_exp += rho_dot_V_dot_rho[i,j]
             corr_exp += rho_dot_corr_dot_rho[i,j]
-            binder_exp += rho_dot_binder_dot_rho[i,j]
             partition_func += rho_beta[i,j]
 
     v_exp *= 1.0 / partition_func
     corr_exp *= 1.0 / partition_func
-    binder_exp *= 1.0 / partition_func
     e_exp *= 1.0 / partition_func
 
-    return v_exp, corr_exp, binder_exp, e_exp
+    return v_exp, corr_exp, e_exp
 
 if __name__ == "__main__":
 
     l = 5
     g = 1.0
-    P = 40
+    P_list = [110, 120, 130, 140, 150, 160]
     T = 0.1
 
     v_3_body = dvr_v_n3(l, g)
     potential_vec = np.diag(v_3_body)
     corr_vec = get_corr_vec(2 * l + 1)
-    binder_vec = get_binder(2 * l + 1)
-    v_exp_nmm, corr_exp_nmm, binder_exp_nmm, E_exp_nmm = prop_n3_NMM(l, g, P, T, corr_vec, potential_vec, binder_vec)
+    pool = multiprocessing.Pool()
+    nmm_results = pool.map(partial(prop_n3_NMM_pair, l, g, T, corr_vec, potential_vec), P_list)
 
+    v_exp_nmm = []
+    corr_exp_nmm = []
+    E_exp_nmm = []
+    print(nmm_results)
+    for i in range(len(P_list)):
+        nmm_results_i = np.array(nmm_results[i])
+        v_exp_nmm.append(nmm_results_i[0])
+        corr_exp_nmm.append(nmm_results_i[1])
+        E_exp_nmm.append(nmm_results_i[2])
+
+    print("P = ", P_list)
     print("V (NMM) = ", v_exp_nmm)
     print("Correlation (NMM) = ", corr_exp_nmm)
-    print("Binder (NMM) = ", binder_exp_nmm)
     print("Energy (NMM) = ", E_exp_nmm)
     
 

@@ -355,25 +355,25 @@ def func_pair(x, a, b):
 
 if __name__=="__main__":
     
-    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02"
+    mc_output_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02"
     #process_mc_outputs(dt_folder)
     
-    process_estimator_outputs(dt_folder)
-    process_parameter_sweeps(dt_folder)
+    process_estimator_outputs(mc_output_folder)
+    process_parameter_sweeps(mc_output_folder)
     
     file_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02/Parameter Sweep Binning.csv"
     file_2 = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02/Parameter Sweep.csv"
     file_3 = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02/entropy_Renyi.txt"
     g1, T1, S2_1, S2_err_1 = np.loadtxt(file_1, unpack=True, delimiter=",", skiprows=2)
     g2, T2, S2_2, S2_err_2 = np.loadtxt(file_2, unpack=True, delimiter=",", skiprows=2)
-    g_dmrg, S2_dmrg = np.loadtxt(os.path.join(dt_folder, "entropy_Renyi.txt"), skiprows=3, unpack=True)
+    dmrg_g, dmrg_S2 = np.loadtxt(os.path.join(mc_output_folder, "entropy_Renyi.txt"), skiprows=3, unpack=True)
 
     plt.figure()
     plt.scatter(g1, S2_1, label="MC", color='C0')
     plt.errorbar(g1, S2_1, S2_err_2, fmt='None', capsize=5)
     #plt.scatter(g2, S2_2, label="Jack-Knife", color='C0')
     #plt.errorbar(g2, S2_2, S2_err_2, fmt='None', capsize=5, color="black")
-    plt.plot(g_dmrg[:14], S2_dmrg[:14], label="DMRG", color='C3')
+    plt.plot(dmrg_g[:14], dmrg_S2[:14], label="DMRG", color='C3')
     plt.title("Renyi Entropy Convergence")
     plt.ylabel("S2")
     plt.xlabel("g")

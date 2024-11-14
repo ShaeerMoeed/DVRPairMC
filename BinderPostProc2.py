@@ -3,7 +3,6 @@ import math
 import os
 from scipy.optimize import curve_fit
 from matplotlib import pyplot as plt
-import copy
 
 # Currently, this only supports single block MC (unclear whether we will need to break it into multiple blocks)
 
@@ -13,7 +12,7 @@ def process_mc_outputs(dt_folder):
     outFile = os.path.join(dt_folder, "Estimator Statistics.csv")
     
     str_data_out = ""
-    out_header_2 = "g,T,P,tau,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Mean, Binder Error, Energy Mean, Energy Error\n"
+    out_header_2 = "g,T,P,tau,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Numerator Mean, Binder Numerator Error, Binder Denominator Mean, Binder Denominator Error, Energy Mean, Energy Error\n"
     for i in range(len(parameter_sets)):
         parameter_file_id = parameter_sets[i]
         if parameter_file_id[-3:] == "csv" or parameter_file_id[-3:] == "png" or parameter_file_id[-3:] == "txt":
@@ -46,55 +45,29 @@ def process_mc_outputs(dt_folder):
 
         potential_mean, potential_se = calculateError_byBinning(potential_array)
 
-        '''
         corr_mean, corr_se = calculateError_byBinning(corr_array)
-        corr_jk_samples, num_blocks = jack_knife_samples(5000, corr_array, 1)
+        corr_jk_samples, num_blocks = jack_knife_samples(5000, corr_array, 20)
         corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N) 
-        '''
 
         #binder_mean, binder_se = calculateError_byBinning(binder_array)
         binder_denom_array = np.copy(binder_array)
-        binder_denom_array = list(map(lambda x: x/(float(N)**2), binder_denom_array))
-        binder_num_array = []
-        for i in range(np.shape(binder_array)[0]):
-            if binder_array[i] < 0:
-                binder_num_array.append(-(((binder_array[i])**2)/(float(N)**4)))
-            else:
-                binder_num_array.append((((binder_array[i])**2)/(float(N)**4)))
+        binder_denom_array = list(map(lambda x :np.abs(x)/float(N**2), binder_array))
+        binder_num_array = list(map(lambda x :(x**2)/(float(N)**4), binder_array))
 
+        if g <= 0.61:
+            binder_num_jk_samples, num_blocks = jack_knife_samples(20000, binder_num_array, 5)
+            binder_denom_jk_samples, num_blocks = jack_knife_samples(20000, binder_denom_array, 5)
+            binder_num_mean, binder_denom_mean, binder_num_error, binder_denom_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks)
+        if g > 0.61:
+            binder_num_jk_samples, num_blocks = jack_knife_samples(20000, binder_num_array, 5)
+            binder_denom_jk_samples, num_blocks = jack_knife_samples(20000, binder_denom_array, 5)
+            binder_num_mean, binder_denom_mean, binder_num_error, binder_denom_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks) 
+        
         '''
-        if dt_folder == "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/22_03_2024_22_08_16":
-            if (g == 0.5 or g == 0.6 or g == 0.3 or g == 1.0): 
-                plt.figure()
-                plt.plot(binder_array)
-                plt.title("g = {}".format(g))
-                plt.show()
+        binder_denom_mean, binder_denom_error = calculateError_byBinning(binder_denom_array[20000:])
+        binder_num_mean, binder_num_error = calculateError_byBinning(binder_num_array[20000:])
         '''
 
-        if g < 0.49: 
-            binder_num_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/5.0)), binder_num_array, 5)
-            binder_denom_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/5.0)), binder_denom_array, 5)
-            binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks)
-            corr_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(corr_array)[0])/5.0)), corr_array, 5)
-            corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N) 
-        elif g > 0.61: 
-            binder_num_jk_samples, num_blocks = jack_knife_samples(1, binder_num_array, 5)
-            binder_denom_jk_samples, num_blocks = jack_knife_samples(1, binder_denom_array, 5)
-            binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks) 
-            corr_jk_samples, num_blocks = jack_knife_samples(1, corr_array, 5)
-            corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N) 
-        else:
-            binder_num_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/1.002)), binder_num_array, 5)
-            binder_denom_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/1.002)), binder_denom_array, 5)
-            binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks)
-            corr_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(corr_array)[0])/2)), corr_array, 50)
-            corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N)
-
-        '''
-        binder_denom_mean, binder_denom_se = calculateError_byBinning(binder_denom_array)
-        binder_num_mean, binder_num_se = calculateError_byBinning(binder_num_array)
-        '''
-        corr_mean, corr_se = calculateError_byBinning(corr_array[10000:])
         #binder_mean = 1.0 - binder_num_mean/(3.0 * (binder_denom_mean**2))
         # TODO: Figure out correct statistical error for binder
         #binder_se = binder_denom_se/(N**2)
@@ -102,8 +75,8 @@ def process_mc_outputs(dt_folder):
         energy_mean, energy_se = calculateError_byBinning(energy_array)
         tau = 1.0/(float(T) * float(P))
         str_data_out += str(g) + "," + str(T) + "," + str(P) + "," + str(tau) + "," + str(potential_mean) + \
-        "," + str(potential_se) + "," + str(corr_mean) + "," + str(corr_se) + "," + str(binder_mean) + "," + str(binder_error) + \
-        "," + str(energy_mean) + "," + str(energy_se) + "\n"
+        "," + str(potential_se) + "," + str(corr_mean) + "," + str(corr_se) + "," + str(binder_num_mean) + "," + str(binder_num_error) + \
+        "," + str(binder_denom_mean) + "," + str(binder_denom_error) + "," + str(energy_mean) + "," + str(energy_se) + "\n"
 
     out_header_1 = "N = {}, l = {}, Steps = {}\n".format(N, l, sim_steps)
     out_header = out_header_1 + out_header_2
@@ -113,13 +86,14 @@ def process_mc_outputs(dt_folder):
 
     return 0
 
-def process_estimator_outputs(dt_folder, fit_transition=True):
+def process_estimator_outputs(dt_folder):
 
     inFile = os.path.join(dt_folder, "Estimator Statistics.csv")
     g_T_pair_list = []
     potential_data = []
     corr_data = []
-    binder_data = []
+    binder_num_data = []
+    binder_denom_data = []
     energy_data = []
     P_data = []
     with open(inFile, 'r') as f:
@@ -134,14 +108,16 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
                 P_data_g_T = (float(data[2]), float(data[3]))
                 potential_data_g_T = (float(data[4]), float(data[5]))
                 corr_data_g_T = (float(data[6]), float(data[7]))
-                binder_data_g_T = (float(data[8]), float(data[9]))
-                energy_data_g_T = (float(data[10]), float(data[11]))
+                binder_num_data_g_T = (float(data[8]), float(data[9]))
+                binder_denom_data_g_T = (float(data[10]), float(data[11]))
+                energy_data_g_T = (float(data[12]), float(data[13]))
                 if g_T_pair not in g_T_pair_list:
                     g_T_pair_list.append(g_T_pair)
                     P_data.append([P_data_g_T])
                     potential_data.append([potential_data_g_T])
                     corr_data.append([corr_data_g_T])
-                    binder_data.append([binder_data_g_T])
+                    binder_num_data.append([binder_num_data_g_T])
+                    binder_denom_data.append([binder_denom_data_g_T])
                     energy_data.append([energy_data_g_T])
                 else: 
                     for i in range(len(g_T_pair_list)):
@@ -149,7 +125,8 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
                             P_data[i].append(P_data_g_T)
                             potential_data[i].append(potential_data_g_T)
                             corr_data[i].append(corr_data_g_T)
-                            binder_data[i].append(binder_data_g_T)
+                            binder_num_data[i].append(binder_num_data_g_T)
+                            binder_denom_data[i].append(binder_denom_data_g_T)
                             energy_data[i].append(energy_data_g_T)
                             break
 
@@ -164,29 +141,39 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
             P_data_g_T = P_data[i]
             potential_data_g_T = potential_data[i]
             corr_data_g_T = corr_data[i]
-            binder_data_g_T = binder_data[i]
+            binder_num_data_g_T = binder_num_data[i]
+            binder_denom_data_g_T = binder_denom_data[i]
             energy_data_g_T = energy_data[i]
             tau_list = list(map(lambda x :float(x[1]), P_data_g_T))
             potential_mean_list = list(map(lambda x :float(x[0]), potential_data_g_T))
             potential_err_list = list(map(lambda x :float(x[1]), potential_data_g_T))
             corr_mean_list = list(map(lambda x :float(x[0]), corr_data_g_T))
             corr_err_list = list(map(lambda x :float(x[1]), corr_data_g_T))
-            binder_mean_list = list(map(lambda x :float(x[0]), binder_data_g_T))
-            binder_err_list = list(map(lambda x :float(x[1]), binder_data_g_T))
+            binder_num_mean_list = list(map(lambda x :float(x[0]), binder_num_data_g_T))
+            binder_num_err_list = list(map(lambda x :float(x[1]), binder_num_data_g_T))
+            binder_denom_mean_list = list(map(lambda x :float(x[0]), binder_denom_data_g_T))
+            binder_denom_err_list = list(map(lambda x :float(x[1]), binder_denom_data_g_T))
             energy_mean_list = list(map(lambda x :float(x[0]), energy_data_g_T))
             energy_err_list = list(map(lambda x :float(x[1]), energy_data_g_T))
             filename_potential = 'Potential Energy Fit (g = {}, T = {}).png'.format(g, T)
             filename_correlation = 'Correlation Fit (g = {}, T = {}).png'.format(g, T)
-            filename_binder = 'Binder Ratio Fit (g = {}, T = {}).png'.format(g, T)
+            filename_binder_numerator = 'Binder Numerator Fit (g = {}, T = {}).png'.format(g, T)
+            filename_binder_denominator = 'Binder Denominator Fit (g = {}, T = {}).png'.format(g, T)
             filename_energy = 'Energy Fit (g = {}, T = {}).png'.format(g, T)
             potential_fit_results = extrapolate_results(tau_list, potential_mean_list, func_quadratic, 100, potential_err_list, 'V', filename_potential, os.path.join(dt_folder, filename_potential))
             
-            if fit_transition and (g == 0.5 or g == 0.6):
+            if g == 0.5 or g == 0.6:
+                binder_num_fit_results = extrapolate_results(tau_list, binder_num_mean_list, func_linear, 100, binder_num_err_list, 'Binder Numerator', filename_binder_numerator, os.path.join(dt_folder, filename_binder_numerator), use_pts=False)
+                binder_denom_fit_results = extrapolate_results(tau_list, binder_denom_mean_list, func_linear, 100, binder_denom_err_list, 'Binder Denominator', filename_binder_denominator, os.path.join(dt_folder, filename_binder_denominator), use_pts=False)
                 corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_linear, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=False)
+                binder_fit_val = func_binder_ratio(binder_num_fit_results[1][-1], binder_denom_fit_results[1][-1])
+                binder_fit_error = np.abs(binder_fit_val) * np.sqrt((binder_num_fit_results[2]/binder_num_fit_results[1][-1])**2 + (binder_denom_fit_results[2]/binder_denom_fit_results[1][-1])**2)
             else:
                 corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_cubic, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=True)
-
-            binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_cubic, 100, binder_err_list, 'Binder Ratio', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=True)
+                binder_num_fit_results = extrapolate_results(tau_list, binder_num_mean_list, func_cubic, 100, binder_num_err_list, 'Binder Numerator', filename_binder_numerator, os.path.join(dt_folder, filename_binder_numerator), use_pts=True)
+                binder_denom_fit_results = extrapolate_results(tau_list, binder_denom_mean_list, func_cubic, 100, binder_denom_err_list, 'Binder Denominator', filename_binder_denominator, os.path.join(dt_folder, filename_binder_denominator), use_pts=True)
+                binder_fit_val = func_binder_ratio(binder_num_fit_results[1][-1], binder_denom_fit_results[1][-1])
+                binder_fit_error = np.abs(binder_fit_val) * np.sqrt((binder_num_fit_results[2]/binder_num_fit_results[1][-1])**2 + (binder_denom_fit_results[2]/binder_denom_fit_results[1][-1])**2)
             '''
             if g == 0.5 or g == 0.6:
                 binder_fit_results = extrapolate_results(tau_list, binder_mean_list, func_linear, 100, binder_err_list, 'Binder Ratio', filename_binder, os.path.join(dt_folder, filename_binder), use_pts=False)
@@ -198,8 +185,8 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
             energy_fit_results = extrapolate_results(tau_list, energy_mean_list, func_quadratic, 100, energy_err_list, 'Energy', filename_energy, os.path.join(dt_folder, filename_energy))
             f.write(str(g) + "," + str(T) + "," + str(potential_fit_results[1][-1]) + "," + \
                     str(potential_fit_results[2]) + "," + str(corr_fit_results[1][-1]) + "," + \
-                    str(corr_fit_results[2]) + "," + str(binder_fit_results[1][-1]) + "," + \
-                    str(binder_fit_results[2]) + "," + str(energy_fit_results[1][-1]) + "," + \
+                    str(corr_fit_results[2]) + "," + str(binder_fit_val) + "," + \
+                    str(binder_fit_error) + "," + str(energy_fit_results[1][-1]) + "," + \
                     str(energy_fit_results[2]) + "\n")
 
     return 0
@@ -425,22 +412,28 @@ def calculate_binder_jk_estimates(samples_num, samples_denom, num_blocks):
 
     j1_mean_array = np.zeros((num_blocks))
     j2_mean_array = np.zeros((num_blocks))
-    func_array = np.zeros((num_blocks))
+    func_num_array = np.zeros((num_blocks))
+    func_denom_array = np.zeros((num_blocks))
     full_mean_num = np.mean(samples_num)
     full_mean_denom = np.mean(samples_denom)
 
     for i in range(num_blocks):
         j1_mean_array[i] = ((full_mean_num * num_blocks) - samples_num[i])/(num_blocks-1)
         j2_mean_array[i] = ((full_mean_denom * num_blocks) - samples_denom[i])/(num_blocks-1)
-        func_array[i] = func_binder_ratio(j1_mean_array[i], j2_mean_array[i])
+        func_num_array[i] = j1_mean_array[i]
+        func_denom_array[i] = j2_mean_array[i]
     
-    func_mean_jk = np.mean(func_array)
-    func_std_dev_jk = np.std(func_array)
-    func_std_error_jk = np.sqrt((num_blocks-1)) * func_std_dev_jk
+    func_num_mean_jk = np.mean(func_num_array)
+    func_denom_mean_jk = np.mean(func_denom_array)
+    func_num_std_dev_jk = np.std(func_num_array)
+    func_denom_std_dev_jk = np.std(func_denom_array)
+    func_num_std_error_jk = np.sqrt((num_blocks-1)) * func_num_std_dev_jk
+    func_denom_std_error_jk = np.sqrt((num_blocks-1)) * func_denom_std_dev_jk
 
-    func_mean = num_blocks * func_binder_ratio(full_mean_num, full_mean_denom) - (num_blocks - 1)*func_mean_jk
+    func_num_mean = num_blocks * full_mean_num - (num_blocks - 1)*func_num_mean_jk
+    func_denom_mean = num_blocks * full_mean_denom - (num_blocks - 1)*func_denom_mean_jk
 
-    return func_mean, func_std_error_jk
+    return func_num_mean, func_denom_mean, func_num_std_error_jk, func_denom_std_error_jk
 
 def calculate_corr_jk_estimates(jk_samples, num_blocks, num_rotors):
 
@@ -515,14 +508,14 @@ if __name__=="__main__":
     dt_folder_2 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/15_07_2024_05_49_33"
     dt_folder_3 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/19_07_2024_17_48_46"
     process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1,  fit_transition=False)
+    process_estimator_outputs(dt_folder_1)
     process_parameter_sweeps(dt_folder_1, cumulative=False)
 
     process_mc_outputs(dt_folder_2)
-    process_estimator_outputs(dt_folder_2, fit_transition=False)
+    process_estimator_outputs(dt_folder_2)
 
     process_mc_outputs(dt_folder_3)
-    process_estimator_outputs(dt_folder_3, fit_transition=False)
+    process_estimator_outputs(dt_folder_3)
 
     combine_parameter_sweeps(dt_folder_1, dt_folder_2, "Parameter Sweep.csv", "Parameter Sweep.csv")
     process_parameter_sweeps(dt_folder_2, cumulative=False)
@@ -535,11 +528,10 @@ if __name__=="__main__":
     #m_max = 12
     dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/20_07_2024_23_53_49"
     process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1, fit_transition=True)
+    process_estimator_outputs(dt_folder_1)
     process_parameter_sweeps(dt_folder_1, cumulative=False)
     
-    #Not used
-    '''
+    ''' Not used
     # m_max = 12 with P = 80
     dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_07_2024_03_26_24"
     process_mc_outputs(dt_folder_1)
@@ -547,10 +539,10 @@ if __name__=="__main__":
     process_parameter_sweeps(dt_folder_1, cumulative=False)
     '''
     
-    # m_max = 14 with P = 100
+    # m_max = 12 with P = 100
     dt_folder_4 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/01_08_2024_18_11_46"
     process_mc_outputs(dt_folder_4)
-    process_estimator_outputs(dt_folder_4, fit_transition=True)
+    process_estimator_outputs(dt_folder_4)
     process_parameter_sweeps(dt_folder_4, cumulative=False)
 
     
