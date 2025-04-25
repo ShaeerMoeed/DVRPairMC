@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 dmrg_g, dmrg_corr = np.loadtxt("/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/20_07_2024_16_15_52/corr.txt", skiprows=4, unpack=True)
 dmrg_g_2, dmrg_corr_2 = np.loadtxt("/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/22_03_2024_22_08_16/dmrg_corr.txt", skiprows=4, unpack=True)
 
-mc_results = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/19_07_2024_17_48_46/Parameter Sweep Cumulative.csv" #300000 steps total
+mc_results = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/19_07_2024_17_48_46/Parameter Sweep Cumulative.csv" # 300000 steps total
 #mc_results = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/22_03_2024_22_08_16/Parameter Sweep.csv"
 #mc_results = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/15_07_2024_05_49_33/Parameter Sweep Cumulative.csv"
 mc_data = np.loadtxt(mc_results, delimiter=",", skiprows=2)

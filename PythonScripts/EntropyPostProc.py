@@ -368,17 +368,22 @@ if __name__=="__main__":
     g2, T2, S2_2, S2_err_2 = np.loadtxt(file_2, unpack=True, delimiter=",", skiprows=2)
     dmrg_g, dmrg_S2 = np.loadtxt(os.path.join(mc_output_folder, "entropy_Renyi.txt"), skiprows=3, unpack=True)
 
+    log2 = [np.log(2.0)]*len(g1)
+
     plt.figure()
+    plt.rcParams['mathtext.fontset']='stix'
     plt.scatter(g1, S2_1, label="MC", color='C0')
     plt.errorbar(g1, S2_1, S2_err_2, fmt='None', capsize=5)
     #plt.scatter(g2, S2_2, label="Jack-Knife", color='C0')
     #plt.errorbar(g2, S2_2, S2_err_2, fmt='None', capsize=5, color="black")
     plt.plot(dmrg_g[:14], dmrg_S2[:14], label="DMRG", color='C3')
-    plt.title("Renyi Entropy Convergence")
-    plt.ylabel("S2")
-    plt.xlabel("g")
+    plt.plot(g1, log2, label=r"ln(2)", color='black')
+    plt.ylabel(r"$S_2$", fontsize=20)
+    plt.xlabel(r"$g$", fontsize=20)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
     plt.legend()
-    plt.savefig("Entropy.png", bbox_inches='tight')
+    plt.savefig("Entropy.png", bbox_inches='tight', dpi=1200)
     plt.show()
     
 

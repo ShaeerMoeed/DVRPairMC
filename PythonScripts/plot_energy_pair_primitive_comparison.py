@@ -26,8 +26,8 @@ def fit_error(x_pts, y_pts, fit_func, num_pts_out=100):
 
     return fit_x, fit_y, err
 
-primitive_results = "/Users/shaeermoeed/Github/DVRPairMC/primitive_gibbs_run.csv"
-pair_results = "/Users/shaeermoeed/Github/DVRPairMC/pair_gibbs_run.csv"
+primitive_results = "/Users/shaeermoeed/Github/DVRPairMC/PythonScripts/primitive_gibbs_run.csv"
+pair_results = "/Users/shaeermoeed/Github/DVRPairMC/PythonScripts/pair_gibbs_run.csv"
 
 g,p,tau_prim,e0_prim,e0_err_prim = np.loadtxt(primitive_results, skiprows=4, unpack=True, delimiter=",")
 pair_data = np.loadtxt(pair_results, skiprows=2, unpack=False, delimiter=",")

@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <thread>
 
-class InputParamters{
+class InputParameters{
 public:
     int P;
     double g;
@@ -12,7 +12,7 @@ public:
     int N;
     bool trackSgn;
 
-    InputParamters(const int &num_beads, const double &coupling_strength, const double &simulation_temperature,
+    InputParameters(const int &num_beads, const double &coupling_strength, const double &simulation_temperature,
                    const int &num_rotors, const bool &track_sgn){
         P = num_beads;
         g = coupling_strength;
@@ -31,10 +31,10 @@ public:
     int block_num = 1;
     int num_blocks = 1;
     //int N = 150;
-    //int max_states = 14;
     int max_states = 10;
+    //int max_states = 10;
     int num_grid_pts = 2 * max_states + 1;
-    int mc_steps = 50000;
+    int mc_steps = 100000;
     //int mc_steps = 10000;
     int sampler_seed = 901234567;
     int startPos = 1;
@@ -57,7 +57,7 @@ public:
         }
     }
 
-    void simulateMC(const InputParamters &sim_params){
+    void simulateMC(const InputParameters &sim_params){
 
         double g = sim_params.g;
         double T=  sim_params.T;
@@ -116,7 +116,7 @@ public:
 
     }
 
-    void iterateParamters(const std::vector<InputParamters> &simulation_params){
+    void iterateParamters(const std::vector<InputParameters> &simulation_params){
 
         for (int i = 0; i < simulation_params.size(); i++){
             simulateMC(simulation_params.at(i));
@@ -377,6 +377,7 @@ int main() {
 
 
     // For chemical potential
+    /*
     double sim_T = 0.1;
     int p_1 = 20;
     int p_2 = 40;
@@ -524,11 +525,12 @@ int main() {
     std::thread thread_16(&MCSimulator::iterateParamters, &mcSimulations_16, simulation_params_16);
     std::thread thread_17(&MCSimulator::iterateParamters, &mcSimulations_17, simulation_params_17);
     std::thread thread_18(&MCSimulator::iterateParamters, &mcSimulations_18, simulation_params_18);
+    */
     /*
     std::thread thread_19(&MCSimulator::iterateParamters, &mcSimulations_19, simulation_params_19);
     std::thread thread_20(&MCSimulator::iterateParamters, &mcSimulations_20, simulation_params_20);
     */
-
+    /*
     thread_1.join();
     thread_2.join();
     thread_3.join();
@@ -547,25 +549,32 @@ int main() {
     thread_16.join();
     thread_17.join();
     thread_18.join();
+    */
     /*
     thread_19.join();
     thread_20.join();
     */
 
-    /*
-    std::vector<InputParamters> simulation_params_1;
-    MCSimulator mcSimulations_1 = MCSimulator();
 
-    double sim_T = 1.0;
-    int p_1 = 6;
-    double g = 1.0;
-    int N = 3;
+    std::vector<InputParameters> simulation_params_1;
+    std::vector<InputParameters> simulation_params_2;
+    MCSimulator mcSimulations_1 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_2 = MCSimulator(root_folder, dt_folder);
 
-    simulation_params_1.push_back(InputParamters(p_1, g, sim_T, N));
+    double sim_T = 0.1;
+    int p_1 = 60;
+    double g = 0.5;
+    int N = 5;
+
+    simulation_params_1.push_back(InputParameters(p_1, 0.5, sim_T,
+                                                  N, false));
+    simulation_params_2.push_back(InputParameters(p_1, 0.6, sim_T,
+                                                  N, false));
+
     std::thread thread_1(&MCSimulator::iterateParamters, &mcSimulations_1, simulation_params_1);
+    std::thread thread_2(&MCSimulator::iterateParamters, &mcSimulations_2, simulation_params_2);
     thread_1.join();
-    */
-
+    thread_2.join();
 
     return 0;
 }
