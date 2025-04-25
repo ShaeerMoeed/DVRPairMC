@@ -18,6 +18,8 @@ def process_mc_outputs(dt_folder):
         parameter_file_id = parameter_sets[i]
         if parameter_file_id[-3:] == "csv" or parameter_file_id[-3:] == "png" or parameter_file_id[-3:] == "txt":
             continue
+        if parameter_file_id[-5:] == "Store":
+            continue
         parameter_list = parameter_file_id.split("_")
         g = float(parameter_list[1])
         T = float(parameter_list[3])
@@ -87,7 +89,7 @@ def process_mc_outputs(dt_folder):
             binder_num_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/1.002)), binder_num_array, 5)
             binder_denom_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/1.002)), binder_denom_array, 5)
             binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks)
-            corr_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(corr_array)[0])/2)), corr_array, 50)
+            corr_jk_samples, num_blocks = jack_knife_samples(20000, corr_array, 2000)
             corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N)
 
         '''
@@ -113,9 +115,45 @@ def process_mc_outputs(dt_folder):
 
     return 0
 
-def process_estimator_outputs(dt_folder, fit_transition=True):
+def combine_estimator_statistics(dt_folder_1, dt_folder_2, filename_1, filename_2):
 
-    inFile = os.path.join(dt_folder, "Estimator Statistics.csv")
+    inFile1 = os.path.join(dt_folder_1, filename_1)
+    inFile2 = os.path.join(dt_folder_2, filename_2)
+
+    data_1 = np.loadtxt(inFile1, delimiter=",", skiprows=2)
+    data_2 = np.loadtxt(inFile2, delimiter=",", skiprows=2)
+
+    data = np.zeros(np.shape(data_1))
+    for i in range(np.shape(data_1)[0]):
+        data[i, 0] = data_1[i, 0]
+        data[i, 1] = data_1[i, 1]
+        data[i, 2] = data_1[i, 2]
+        data[i, 3] = data_1[i, 3]
+
+    for i in range(4):
+        for j in range(np.shape(data_1)[0]):
+            for k in range(np.shape(data_2)[0]):
+                if ((data_1[j, 0] == data_2[k,0]) and (data_1[j,1] == data_2[k,1]) and (data_1[j,2] == data_2[k,2])):
+                    data_1[j, 4+2*i] = 0.5*(data_1[j, 4+2*i] + data_2[k, 4+2*i])
+                    data_1[j, 4+2*i + 1] = 0.5*np.sqrt((data_1[j,4+2*i+1])**2 + (data_2[k,4+2*i+1])**2)
+            data[j, 4+2*i] = data_1[j, 4+2*i]
+            data[j, 4+2*i + 1] = data_1[j,4+2*i+1]
+
+    with open(inFile1, "r") as f:
+        header_txt = f.readline()
+        header_txt += f.readline().strip("\n")
+
+    np.savetxt(os.path.join(dt_folder_2, "Estimator Statistics Cumulative.csv"), data, delimiter=",", header=header_txt)
+
+    return 0
+
+def process_estimator_outputs(dt_folder, cumulative=False, fit_type=None):
+
+    if cumulative:
+        filename = "Estimator Statistics Cumulative.csv"
+    else:
+        filename = "Estimator Statistics.csv"
+    inFile = os.path.join(dt_folder, filename)
     g_T_pair_list = []
     potential_data = []
     corr_data = []
@@ -152,8 +190,17 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
                             binder_data[i].append(binder_data_g_T)
                             energy_data[i].append(energy_data_g_T)
                             break
+    
+    if cumulative:
+        file_name = "Parameter Sweep Cumulative"
+    else:
+        file_name = "Parameter Sweep"
+    if fit_type is not None:
+        file_name += " {} Fit.csv".format(fit_type)
+    else:
+        file_name += " No Fit.csv"
 
-    outfile = os.path.join(dt_folder, "Parameter Sweep.csv")
+    outfile = os.path.join(dt_folder, file_name)
     with open(outfile, 'w') as f:
         f.write(out_header_line)
         f.write("g,T,Potential Mean,Potential Error,Correlation Mean,Correlation Error, Binder Mean, Binder Error, Energy Mean, Energy Error\n")
@@ -181,8 +228,15 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
             filename_energy = 'Energy Fit (g = {}, T = {}).png'.format(g, T)
             potential_fit_results = extrapolate_results(tau_list, potential_mean_list, func_quadratic, 100, potential_err_list, 'V', filename_potential, os.path.join(dt_folder, filename_potential))
             
-            if fit_transition and (g == 0.5 or g == 0.6):
-                corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_linear, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=False)
+            if fit_type is not None:
+                if fit_type == 'linear':
+                    corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_linear, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=False)
+                if fit_type == 'quadratic':
+                    corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_quadratic, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=False)
+                if fit_type == 'cubic':
+                    corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_cubic, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=False)
+                if fit_type == 'lin_plus_quad':
+                    corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_lin_plus_quad, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=False)
             else:
                 corr_fit_results = extrapolate_results(tau_list, corr_mean_list, func_cubic, 100, corr_err_list, 'eiej', filename_correlation, os.path.join(dt_folder, filename_correlation), use_pts=True)
 
@@ -204,12 +258,20 @@ def process_estimator_outputs(dt_folder, fit_transition=True):
 
     return 0
 
-def process_parameter_sweeps(dt_folder, cumulative):
+def process_parameter_sweeps(dt_folder, cumulative, fit_type):
     
-    if cumulative: 
-        file_name = "Parameter Sweep Cumulative.csv"
-    else: 
-        file_name = "Parameter Sweep.csv"
+    if cumulative:
+        file_name = "Parameter Sweep Cumulative"
+    else:
+        file_name = "Parameter Sweep"
+    if fit_type is not None:
+        file_name += " {} Fit.csv".format(fit_type)
+    else:
+        file_name += " No Fit.csv"
+
+    if fit_type == None:
+        fit_type = "No"
+
     inFile = os.path.join(dt_folder, file_name)
     T_list = []
     g_list = []
@@ -254,12 +316,12 @@ def process_parameter_sweeps(dt_folder, cumulative):
         
         if cumulative:
             potentialPlotName = "Potential Cumulative (T = {}).png".format(temperature)
-            corrPlotName = "EiEj Cumulative (T = {}).png".format(temperature)
+            corrPlotName = "EiEj Cumulative (T = {}) {} Fit.png".format(temperature, fit_type)
             binderPlotName = "Binder Ratio Cumulative (T = {}).png".format(temperature)
             energyPlotName = "Energy Cumulative (T = {}).png".format(temperature)
         else:
             potentialPlotName = "Potential (T = {}).png".format(temperature)
-            corrPlotName = "EiEj (T = {}).png".format(temperature)
+            corrPlotName = "EiEj (T = {}) {} Fit.png".format(temperature, fit_type)
             binderPlotName = "Binder Ratio (T = {}).png".format(temperature)
             energyPlotName = "Energy (T = {}).png".format(temperature)
         
@@ -285,7 +347,7 @@ def process_parameter_sweeps(dt_folder, cumulative):
         plt.savefig(corrPlotPath)
         plt.close()
 
-        dmrg_g, dmrg_pol, dmrg_binder = np.loadtxt("/Users/shaeermoeed/Github/DVRPairMC/binder_x.txt", skiprows=4, unpack=True)
+        dmrg_g, dmrg_pol, dmrg_binder = np.loadtxt("/Users/shaeermoeed/Github/DVRPairMC/PythonScripts/binder_x.txt", skiprows=4, unpack=True)
 
         plt.figure()
         plt.plot(g_T_list, binder_mean_list)
@@ -329,6 +391,8 @@ def extrapolate_results(x_pts, y_pts, func, num_pts_out, error, ylabel, title, f
                 y = func(x, coefficients[0], coefficients[1])
             elif len(coefficients) == 3:
                 y = func(x, coefficients[0], coefficients[1], coefficients[2])
+            elif len(coefficients) == 5:
+                y = func(x, coefficients[0], coefficients[1], coefficients[2], coefficients[3], coefficients[4])
             else:
                 raise Exception("Length of coefficients should be either 2 or 3\n")
             fit_x.append(x)
@@ -400,8 +464,11 @@ def func_linear(x, a, b):
 def func_cubic(x, a, b):
     return a*x*x*x + b
 
-def func_quadratic(x,a, b):
+def func_quadratic(x, a, b):
     return a*x*x + b
+
+def func_lin_plus_quad(x, a, b, c):
+    return a*x*x + b*x*x*x*x + c
 
 def jack_knife_samples(decorrelation_time, h_vec, block_size=50):
 
@@ -510,54 +577,79 @@ if __name__=="__main__":
     process_parameter_sweeps(dt_folder_2, cumulative=True)
     '''
     
+    # Paper Code Starts here
+    '''
     # m_max = 10
     dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/22_03_2024_22_08_16"
     dt_folder_2 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/15_07_2024_05_49_33"
     dt_folder_3 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/19_07_2024_17_48_46"
     process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1,  fit_transition=False)
-    process_parameter_sweeps(dt_folder_1, cumulative=False)
-
     process_mc_outputs(dt_folder_2)
-    process_estimator_outputs(dt_folder_2, fit_transition=False)
-
     process_mc_outputs(dt_folder_3)
-    process_estimator_outputs(dt_folder_3, fit_transition=False)
+    combine_estimator_statistics(dt_folder_1, dt_folder_2, "Estimator Statistics.csv", "Estimator Statistics.csv")
+    combine_estimator_statistics(dt_folder_2, dt_folder_3, "Estimator Statistics Cumulative.csv", "Estimator Statistics.csv")
 
-    combine_parameter_sweeps(dt_folder_1, dt_folder_2, "Parameter Sweep.csv", "Parameter Sweep.csv")
-    process_parameter_sweeps(dt_folder_2, cumulative=False)
-    process_parameter_sweeps(dt_folder_2, cumulative=True)
+    process_estimator_outputs(dt_folder_3, cumulative=True, fit_type="quadratic")
+    process_estimator_outputs(dt_folder_3, cumulative=True, fit_type=None)
 
-    combine_parameter_sweeps(dt_folder_2, dt_folder_3, "Parameter Sweep Cumulative.csv", "Parameter Sweep.csv")
-    process_parameter_sweeps(dt_folder_3, cumulative=False)
-    process_parameter_sweeps(dt_folder_3, cumulative=True)
+    process_parameter_sweeps(dt_folder_3, cumulative=True, fit_type="quadratic")
+    process_parameter_sweeps(dt_folder_3, cumulative=True, fit_type=None)
+
+    process_estimator_outputs(dt_folder_1, cumulative=False, fit_type=None)
+    process_parameter_sweeps(dt_folder_1, cumulative=False, fit_type=None)
 
     #m_max = 12
     dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/20_07_2024_23_53_49"
     process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1, fit_transition=True)
-    process_parameter_sweeps(dt_folder_1, cumulative=False)
+    process_estimator_outputs(dt_folder_1, cumulative=False, fit_type='quadratic')
+    process_estimator_outputs(dt_folder_1, cumulative=False, fit_type=None)
+    process_parameter_sweeps(dt_folder_1, cumulative=False, fit_type='quadratic')
+    process_parameter_sweeps(dt_folder_1, cumulative=False, fit_type=None)
     
-    #Not used
+    # Not used
     '''
     # m_max = 12 with P = 80
-    dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_07_2024_03_26_24"
-    process_mc_outputs(dt_folder_1)
-    process_estimator_outputs(dt_folder_1)
-    process_parameter_sweeps(dt_folder_1, cumulative=False)
+    #dt_folder_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/24_07_2024_03_26_24"
+    #process_mc_outputs(dt_folder_1)
+    #process_estimator_outputs(dt_folder_1)
+    #process_parameter_sweeps(dt_folder_1, cumulative=False)
     '''
     
     # m_max = 14 with P = 100
     dt_folder_4 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/01_08_2024_18_11_46"
     process_mc_outputs(dt_folder_4)
-    process_estimator_outputs(dt_folder_4, fit_transition=True)
-    process_parameter_sweeps(dt_folder_4, cumulative=False)
+    process_estimator_outputs(dt_folder_4, cumulative=False, fit_type='quadratic')
+    process_parameter_sweeps(dt_folder_4, cumulative=False, fit_type='quadratic')
+    process_estimator_outputs(dt_folder_4, cumulative=False, fit_type=None)
+    process_parameter_sweeps(dt_folder_4, cumulative=False, fit_type=None)
+    '''
+    # Paper code ends here
 
+    '''
+    # m_max = 14 with P = 60
+    dt_folder_5 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/06_02_2025_21_17_59"
+    process_mc_outputs(dt_folder_5)
+    process_estimator_outputs(dt_folder_5, cumulative=False, fit_type=None)
+    process_parameter_sweeps(dt_folder_5, cumulative=False, fit_type=None)
+    '''
+
+    # m_max = 14 with P = 60
+    dt_folder_6 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/07_02_2025_19_54_08"
+    process_mc_outputs(dt_folder_6)
+    process_estimator_outputs(dt_folder_6, cumulative=False, fit_type=None)
+    process_parameter_sweeps(dt_folder_6, cumulative=False, fit_type=None)
+
+    # m_max = 10 with P = 60
+    dt_folder_7 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/07_02_2025_19_58_16"
+    process_mc_outputs(dt_folder_7)
+    process_estimator_outputs(dt_folder_7, cumulative=False, fit_type=None)
+    process_parameter_sweeps(dt_folder_7, cumulative=False, fit_type=None)
     
+    '''
     import plot_corr
 
     import plot_binder
-    
+    '''
 
     '''
     # m_max = 5, N=100 for pair vs primitive energy result (g=1.0) 
@@ -565,4 +657,17 @@ if __name__=="__main__":
     process_mc_outputs(dt_folder_1)
     process_estimator_outputs(dt_folder_1)
     process_parameter_sweeps(dt_folder_1, cumulative=False)
+    '''
+
+    '''
+    corr_diag_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/diagnosing_correlation"
+    process_mc_outputs(corr_diag_folder)
+    process_estimator_outputs(corr_diag_folder, fit_transition=False, fit_type='quadratic')
+    process_estimator_outputs(corr_diag_folder, fit_transition=True, fit_type='linear')
+    process_estimator_outputs(corr_diag_folder, fit_transition=True, fit_type='quadratic')
+    #process_estimator_outputs(corr_diag_folder, fit_transition=True, fit_type='lin_plus_quad')
+    process_parameter_sweeps(corr_diag_folder, cumulative=False, infile="Parameter Sweep.csv")
+    process_parameter_sweeps(corr_diag_folder, cumulative=False, infile="Parameter Sweep linear.csv")
+    process_parameter_sweeps(corr_diag_folder, cumulative=False, infile="Parameter Sweep quadratic.csv")
+    #process_parameter_sweeps(corr_diag_folder, cumulative=False, infile="Parameter Sweep lin_plus_quad.csv")
     '''

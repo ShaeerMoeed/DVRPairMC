@@ -159,7 +159,7 @@ def write_densities(parent_dir, l, g_list, test_props, T):
 
         for i in range(num_grid_pts):
             for j in range(num_grid_pts):
-                if abs(prop_k[i,j]) < 0.0:
+                if prop_k[i,j] < 0.0:
                     print("Negative free density element for T = {}, g = {}".format(T,g))
 
         prop_2_k = np.kron(prop_k, prop_k)
@@ -322,8 +322,8 @@ if __name__ == "__main__":
     '''
 
     T_list = [6.0]
-    l = 10
-    g_list = [2.0]
+    l = 14
+    g_list = [0.5, 0.6]
 
     tau_list = [1.0/(T) for T in T_list]
     N = 2
