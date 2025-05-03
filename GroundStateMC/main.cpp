@@ -27,7 +27,7 @@ public:
 
     std::string rootFolder;
     std::string densityFolder;
-    int num_digits = 3;
+    int num_chars = 3;
     int block_num = 1;
     int num_blocks = 1;
     //int N = 150;
@@ -64,8 +64,8 @@ public:
         int P = sim_params.P;
         int N = sim_params.N;
 
-        std::string parameter_folder_name = "g_" + std::to_string(g).substr(0, num_digits) +
-                                            "_T_" + std::to_string(T).substr(0, num_digits) +
+        std::string parameter_folder_name = "g_" + std::to_string(g).substr(0, num_chars) +
+                                            "_T_" + std::to_string(T).substr(0, num_chars) +
                                             "_P_"+ std::to_string(P) + "_N_" + std::to_string(N) +
                                             "_l_" + std::to_string(max_states);
 
@@ -91,7 +91,7 @@ public:
         MonteCarloIntegrator mcSimulator = MonteCarloIntegrator(N, P, max_states, num_grid_pts,
                                                                 T, g,
                                                                 densityFolder,
-                                                                num_digits, mc_steps,
+                                                                num_chars, mc_steps,
                                                                 block_num, num_blocks, startPos,
                                                                 111, sampler_seed,
                                                                 false, outFolder);
@@ -555,7 +555,6 @@ int main() {
     thread_20.join();
     */
 
-
     std::vector<InputParameters> simulation_params_1;
     std::vector<InputParameters> simulation_params_2;
     MCSimulator mcSimulations_1 = MCSimulator(root_folder, dt_folder);
@@ -575,6 +574,9 @@ int main() {
     std::thread thread_2(&MCSimulator::iterateParamters, &mcSimulations_2, simulation_params_2);
     thread_1.join();
     thread_2.join();
+
+    // To run one set of parameters in a loop without multi-threading
+    mcSimulations_1.iterateParamters(simulation_params_1);
 
     return 0;
 }

@@ -28,12 +28,12 @@ private:
 public:
     MonteCarloIntegrator(const int &num_rotors, const int &num_beads, const int &max_states, const int &num_grid_pts,
                          const double &simulation_temperature, const double &coupling_strength,
-                         const std::string &density_directory, const int &density_file_digits,
+                         const std::string &density_directory, const int &density_file_parameter_chars,
                          const int &sim_steps, const int &block_num, const int &num_blocks, const int &start_positions,
                          const int &random_start_seed, const int &sampler_seed, const bool &track_diagnostics,
                          const std::string &out_dir):
                          probabilityTables(coupling_strength, simulation_temperature, max_states, num_beads,
-                                           num_rotors, density_directory, density_file_digits),
+                                           num_rotors, density_directory, density_file_parameter_chars),
                          observables(sim_steps, num_rotors, num_beads, coupling_strength, max_states,
                                      simulation_temperature, block_num, num_blocks, out_dir){
 
