@@ -6,14 +6,37 @@ from matplotlib import pyplot as plt
 
 # Currently, this only supports single block MC (unclear whether we will need to break it into multiple blocks)
 
+def process_mc_file(file):
+
+    skip_rows = 0
+    with open(file, 'r') as f:
+        line_count = 0
+        for line in f.readlines():
+            data = line.strip().split(",")
+            line_count += 1
+            if line_count == 1:
+                header = data
+                sim_steps = int(header[-1].strip().split("=")[-1].strip())
+                numerator_array = np.zeros(sim_steps)
+                denominator_array = np.zeros(sim_steps)
+                step_number_array = np.zeros(sim_steps)
+            if line_count > 2:
+                if ((float(data[1]) == 0.0) or (float(data[2]) == 0.0)):
+                    skip_rows += 1
+                numerator_array[line_count - 3] = float(data[1])
+                denominator_array[line_count - 3] = float(data[2])
+                step_number_array[line_count - 3] = float(data[0])
+
+    return numerator_array, denominator_array, step_number_array, skip_rows
+
 # When using this function, make sure there is a file for start position all zero and all pi and no random start position results in the folder
-def process_mc_outputs(dt_folder):
+def process_mc_outputs_ordered_starts(dt_folder):
 
     parameter_sets = os.listdir(dt_folder)
     outFile = os.path.join(dt_folder, "Estimator Statistics.csv")
     
     str_data_out = ""
-    out_header_2 = "g,T,P,tau, Purity, Purity Error\n"
+    out_header_2 = "g, T, L, P, tau, Purity, Purity Error\n"
     for i in range(len(parameter_sets)):
         parameter_file_id = parameter_sets[i]
         if parameter_file_id[-3:] == "csv" or parameter_file_id[-3:] == "png" or parameter_file_id[-3:] == "txt":
@@ -28,76 +51,180 @@ def process_mc_outputs(dt_folder):
         N_B = int(parameter_list[9])
         l = int(parameter_list[11])
         start_config = parameter_list[13]
+        exchange_type = parameter_list[16]
+        exchange_length = parameter_list[19]
         if start_config != "Zero":
             continue
+        if exchange_type != "SwappedUnswapped":
+            continue
+
         filepath_start_zero = os.path.join(dt_folder, parameter_file_id + "/MC Step Outputs.csv")
+        num, denom, step_num, skip_rows_1 = process_mc_file(filepath_start_zero)
+        h_0 = np.divide(num, step_num)
+        h_0 = np.divide(h_0, 1-h_0)
 
-        skip_rows_1 = 0
-        with open(filepath_start_zero, 'r') as f:
-            line_count = 0
-            for line in f.readlines():
-                data = line.strip().split(",")
-                line_count += 1
-                if line_count == 1:
-                    header = data
-                    sim_steps = int(header[-1].strip().split("=")[-1].strip())
-                    numerator_array_start_zero = np.zeros(sim_steps)
-                    denominator_array_start_zero = np.zeros(sim_steps)
-                    step_number_array_start_zero = np.zeros(sim_steps)
-                if line_count > 2:
-                    if ((float(data[1]) == 0.0) or (float(data[2]) == 0.0)):
-                        skip_rows_1 += 1
-                    step_number_array_start_zero[line_count - 3] = float(data[0])
-                    numerator_array_start_zero[line_count - 3] = float(data[1])
-                    denominator_array_start_zero[line_count - 3] = float(data[2])
-
-        # TODO: Generalize so that all parameter sets with the same parameters and different start positions are automatically processed in a loop  
-        skip_rows_2 = 0
-        parameter_file_id_start_pi = "g_{}_T_{}_P_{}_NA_{}_NB_{}_l_{}_Start_{}".format(g, T, P, N_A, N_B, l, "Pi")
+        parameter_file_id_start_pi = "g_{}_T_{}_P_{}_NA_{}_NB_{}_l_{}_Start_{}_exchange_type_{}_exchange_length_{}".format(g, T, P, N_A, N_B, l, "Pi", exchange_type, exchange_length)
         filepath_start_pi = os.path.join(dt_folder, parameter_file_id_start_pi + "/MC Step Outputs.csv")
-        with open(filepath_start_pi, 'r') as f:
-            line_count = 0
-            for line in f.readlines():
-                data = line.strip().split(",")
-                line_count += 1
-                if line_count == 1:
-                    header = data
-                    sim_steps = int(header[-1].strip().split("=")[-1].strip())
-                    numerator_array_start_pi = np.zeros(sim_steps)
-                    denominator_array_start_pi = np.zeros(sim_steps)
-                    step_number_array_start_pi = np.zeros(sim_steps)
-                if line_count > 2:
-                    if ((float(data[1]) == 0.0) or (float(data[2]) == 0.0)):
-                        skip_rows_2 += 1
-                    numerator_array_start_pi[line_count - 3] = float(data[1])
-                    denominator_array_start_pi[line_count - 3] = float(data[2])
-                    step_number_array_start_pi[line_count - 3] = float(data[0])
-                    #numerator_array_start_pi[line_count - 3] = float(data[1])
-                    #denominator_array_start_pi[line_count - 3] = float(data[2])
-
+        num, denom, step_num, skip_rows_2 = process_mc_file(filepath_start_pi)
+        
+        h_pi = np.divide(num, step_num)
+        h_pi = np.divide(h_pi, 1.0-h_pi)
         skip_rows = max((skip_rows_1, skip_rows_2, 1))
 
-        h_1 = np.divide(numerator_array_start_zero, step_number_array_start_zero)
-        h_2 = np.divide(numerator_array_start_pi, step_number_array_start_pi)
+        h_0_list = [h_0]
+        h_pi_list = [h_pi]
 
-        h_1 = h_1[skip_rows:]
-        h_2 = h_2[skip_rows:]
+        N = N_B
+        N_A_list = [0]
+        for j in range(int(N/4)-1):
 
-        samples_1, num_blocks_1 = jack_knife_samples(1, h_1)
-        samples_2, num_blocks_2 = jack_knife_samples(1, h_2)
+            N_A += 2
+            N_B -= 2
 
-        num_blocks = num_blocks_1 + num_blocks_2
-        samples = np.concatenate((samples_1, samples_2), axis=0)
-        # TODO: Try just computing the purity here so that we can fit purity and not S2 by changing func_entropy to func_purity
-        purity_mean, purity_err = calculate_jk_estimates(samples, func_purity, num_blocks)
-        #sample_mean, sample_err = calculateError_byBinning(samples)
-        #purity_mean = func_purity(sample_mean)
-        #purity_err = np.abs(sample_err/(1.0 - (sample_mean**2)))
+            N_A_list.append(N_A)
 
-        tau = 1.0/(float(T) * float(P))
-        str_data_out += str(g) + "," + str(T) + "," + str(P) + "," + str(tau) + "," + str(purity_mean) + "," + str(purity_err) + "\n"
+            parameter_file_id_start_zero = "g_{}_T_{}_P_{}_NA_{}_NB_{}_l_{}_Start_{}_exchange_type_{}_exchange_length_{}".format(g, T, P, N_A, N_B, l, "Zero", "SwappedSectors", exchange_length)
+            filepath_start_0 = os.path.join(dt_folder, parameter_file_id_start_zero + "/MC Step Outputs.csv")
+            num, denom, step_num, skip_rows_1 = process_mc_file(filepath_start_0)
+            
+            h_0 = np.divide(num, step_num)
+            h_0 = np.divide(h_0, 1-h_0)
 
-    out_header_1 = "NA = {}, NB = {}, l = {}, Steps = {}\n".format(N_A, N_B, l, sim_steps)
+            skip_rows = max((skip_rows, skip_rows_1, 1))
+
+            parameter_file_id_start_pi = "g_{}_T_{}_P_{}_NA_{}_NB_{}_l_{}_Start_{}_exchange_type_{}_exchange_length_{}".format(g, T, P, N_A, N_B, l, "Pi", "SwappedSectors", exchange_length)
+            filepath_start_pi = os.path.join(dt_folder, parameter_file_id_start_pi + "/MC Step Outputs.csv")
+            num, denom, step_num, skip_rows_1 = process_mc_file(filepath_start_pi)
+
+            h_pi = np.divide(num, step_num)
+            h_pi = np.divide(h_pi, 1.0-h_pi)
+            skip_rows = max((skip_rows, skip_rows_1, 1))
+
+            h_0_list.append(np.multiply(h_0_list[-1], h_0))
+            h_pi_list.append(np.multiply(h_pi_list[-1], h_pi))
+            #h_0_list.append(h_0)
+            #h_pi_list.append(h_pi)
+
+        purity_mean_list = []
+        purity_error_list = []
+        for j in range(len(h_0_list)):
+
+            Z_0 = h_0_list[j][skip_rows:]
+            Z_pi = h_pi_list[j][skip_rows:]
+            
+            samples_1, num_blocks_1 = jack_knife_samples(100, Z_0)
+            samples_2, num_blocks_2 = jack_knife_samples(100, Z_pi)
+        
+            num_blocks = num_blocks_1 + num_blocks_2
+            samples = np.concatenate((samples_1, samples_2), axis=0)
+
+            # TODO: Try just computing the purity here so that we can fit purity and not S2 by changing func_entropy to func_purity
+            purity_mean, purity_err = calculate_jk_estimates(samples, func_identity, num_blocks)
+            #samples = np.concatenate((Z_0, Z_pi), axis=0)
+            #purity_mean, purity_err = calculateError_byBinning(samples[10000:])
+            #purity_mean = func_purity(sample_mean)
+            #purity_err = np.abs(sample_err/(1.0 - (sample_mean**2)))
+
+            purity_mean_list.append(purity_mean)
+            purity_error_list.append(purity_err)
+
+            if T == 0.0:
+                T = "0.05"
+            print(T)
+            tau = 1.0/(float(T) * float(P))
+            str_data_out += str(g) + "," + str(T) + "," + str(N_A_list[j]) + "," + str(P) + "," + str(tau) + "," + str(purity_mean) + "," + str(purity_err) + "\n"
+
+    out_header_1 = "N = {}, l = {}\n".format(N, l)
+    out_header = out_header_1 + out_header_2
+    with open(outFile, 'w') as f:
+        f.write(out_header)
+        f.write(str_data_out)
+
+    return 0
+
+def process_mc_outputs_random_start(dt_folder):
+
+    parameter_sets = os.listdir(dt_folder)
+    outFile = os.path.join(dt_folder, "Estimator Statistics.csv")
+    
+    str_data_out = ""
+    out_header_2 = "g, T, L, P, tau, Purity, Purity Error\n"
+    for i in range(len(parameter_sets)):
+        parameter_file_id = parameter_sets[i]
+        if parameter_file_id[-3:] == "csv" or parameter_file_id[-3:] == "png" or parameter_file_id[-3:] == "txt":
+            continue
+        parameter_list = parameter_file_id.split("_")
+        if parameter_list[0] == '.DS':
+            continue
+        g = float(parameter_list[1])
+        T = float(parameter_list[3])
+        P = int(parameter_list[5])
+        N_A = int(parameter_list[7])
+        N_B = int(parameter_list[9])
+        l = int(parameter_list[11])
+        start_config = parameter_list[13]
+        exchange_type = parameter_list[16]
+        exchange_length = parameter_list[19]
+        if start_config != "Random":
+            continue
+        if exchange_type != "SwappedUnswapped":
+            continue
+
+        filepath_start_zero = os.path.join(dt_folder, parameter_file_id + "/MC Step Outputs.csv")
+        num, denom, step_num, skip_rows_1 = process_mc_file(filepath_start_zero)
+        h_0 = np.divide(num, step_num)
+        h_0 = np.divide(h_0, 1-h_0)
+
+        skip_rows = skip_rows_1
+
+        h_0_list = [h_0]
+
+        N = N_B
+        N_A_list = [0]
+        for j in range(int(N/4)-1):
+
+            N_A += 2
+            N_B -= 2
+
+            N_A_list.append(N_A)
+
+            parameter_file_id_start_zero = "g_{}_T_{}_P_{}_NA_{}_NB_{}_l_{}_Start_{}_exchange_type_{}_exchange_length_{}".format(g, T, P, N_A, N_B, l, "Random", "SwappedSectors", exchange_length)
+            filepath_start_0 = os.path.join(dt_folder, parameter_file_id_start_zero + "/MC Step Outputs.csv")
+            num, denom, step_num, skip_rows_1 = process_mc_file(filepath_start_0)
+            
+            h_0 = np.divide(num, step_num)
+            h_0 = np.divide(h_0, 1-h_0)
+
+            skip_rows = max((skip_rows, skip_rows_1, 1))
+
+            h_0_list.append(np.multiply(h_0_list[-1], h_0))
+
+        purity_mean_list = []
+        purity_error_list = []
+        for j in range(len(h_0_list)):
+
+            Z_0 = h_0_list[j][skip_rows+5000:]
+            
+            #samples_1, num_blocks_1 = jack_knife_samples(10000, Z_0)
+        
+            #num_blocks = num_blocks_1
+            #samples = samples_1
+            #samples = np.concatenate((Z_0, Z_pi), axis=0)
+
+            # TODO: Try just computing the purity here so that we can fit purity and not S2 by changing func_entropy to func_purity
+            #purity_mean, purity_err = calculate_jk_estimates(samples, func_identity, num_blocks)
+            samples = Z_0
+            purity_mean, purity_err = calculateError_byBinning(samples)
+            #purity_mean = func_purity(sample_mean)
+            #purity_err = np.abs(sample_err/(1.0 - (sample_mean**2)))
+
+            purity_mean_list.append(purity_mean)
+            purity_error_list.append(purity_err)
+
+            tau = 1.0/(float(T) * float(P))
+            str_data_out += str(g) + "," + str(T) + "," + str(N_A_list[j]) + "," + str(P) + "," + str(tau) + "," + str(purity_mean) + "," + str(purity_err) + "\n"
+
+    out_header_1 = "N = {}, l = {}\n".format(N, l)
     out_header = out_header_1 + out_header_2
     with open(outFile, 'w') as f:
         f.write(out_header)
@@ -108,7 +235,7 @@ def process_mc_outputs(dt_folder):
 def process_estimator_outputs(dt_folder):
 
     inFile = os.path.join(dt_folder, "Estimator Statistics.csv")
-    g_T_pair_list = []
+    g_T_L_pair_list = []
     purity_data = []
     P_data = []
     with open(inFile, 'r') as f:
@@ -119,47 +246,50 @@ def process_estimator_outputs(dt_folder):
                 out_header_line = line
             if line_count > 2: 
                 data = line.strip().split(",")
-                g_T_pair = (float(data[0]), float(data[1]))
-                P_data_g_T = (float(data[2]), float(data[3]))
-                purity_data_g_T = (float(data[4]), float(data[5]))
-                if g_T_pair not in g_T_pair_list:
-                    g_T_pair_list.append(g_T_pair)
-                    P_data.append([P_data_g_T])
-                    purity_data.append([purity_data_g_T])
+                g_T_L_pair = (float(data[0]), float(data[1]), float(data[2]))
+                P_data_g_T_L = (float(data[2]), float(data[3]))
+                purity_data_g_T_L = (float(data[5]), float(data[6]))
+                if g_T_L_pair not in g_T_L_pair_list:
+                    g_T_L_pair_list.append(g_T_L_pair)
+                    P_data.append([P_data_g_T_L])
+                    purity_data.append([purity_data_g_T_L])
                 else: 
-                    for i in range(len(g_T_pair_list)):
-                        if g_T_pair_list[i] == g_T_pair:
-                            P_data[i].append(P_data_g_T)
-                            purity_data[i].append(purity_data_g_T)
+                    for i in range(len(g_T_L_pair_list)):
+                        if g_T_L_pair_list[i] == g_T_L_pair:
+                            P_data[i].append(P_data_g_T_L)
+                            purity_data[i].append(purity_data_g_T_L)
                             break
 
     outfile = os.path.join(dt_folder, "Parameter Sweep.csv")
     with open(outfile, 'w') as f:
         f.write(out_header_line)
-        f.write("g,T,S2, S2 Error\n")
-        for i in range(len(g_T_pair_list)):
-            g_T_pair = g_T_pair_list[i]
-            g = g_T_pair[0]
-            T = g_T_pair[1]
-            P_data_g_T = P_data[i]
-            purity_data_g_T = purity_data[i]
-            tau_list = list(map(lambda x :float(x[1]), P_data_g_T))
-            purity_mean_list = list(map(lambda x :float(x[0]), purity_data_g_T))
-            purity_err_list = list(map(lambda x :float(x[1]), purity_data_g_T))
-            filename_purity = 'Renyi Entropy Fit (g = {}, T = {}).png'.format(g, T)
+        f.write("g,T,L,S2,S2 Error\n")
+        for i in range(len(g_T_L_pair_list)):
+            g_T_L_pair = g_T_L_pair_list[i]
+            g = g_T_L_pair[0]
+            T = g_T_L_pair[1]
+            L = g_T_L_pair[2]
+            P_data_g_T_L = P_data[i]
+            purity_data_g_T_L = purity_data[i]
+            tau_list = list(map(lambda x :float(x[1]), P_data_g_T_L))
+            purity_mean_list = list(map(lambda x :float(x[0]), purity_data_g_T_L))
+            purity_err_list = list(map(lambda x :float(x[1]), purity_data_g_T_L))
+            filename_purity = 'Renyi Entropy Fit (g = {}, T = {}, L = {}).png'.format(g, T, L)
             S2_fit_results = extrapolate_results(tau_list, purity_mean_list, func_pair, 100, purity_err_list, 
-                'S2', filename_purity, os.path.join(dt_folder, filename_purity), use_pts=True, exact_val=None, use_last_pts=False)
-            f.write(str(g) + "," + str(T) + "," + str(S2_fit_results[1][-1]) + "," + \
+                'S2', filename_purity, os.path.join(dt_folder, filename_purity), use_pts=True, exact_val=None, 
+                use_last_pts=False)
+            f.write(str(g) + "," + str(T) + "," + str(L) + "," + str(S2_fit_results[1][-1]) + "," + \
                 str(S2_fit_results[2]) + "\n")
 
     return 0
 
 # TODO: Need to update for entropy
-def process_parameter_sweeps(dt_folder):
+def process_parameter_sweeps(dt_folder, process_dmrg=False):
 
     inFile = os.path.join(dt_folder, "Parameter Sweep.csv")
     T_list = []
     g_list = []
+    L_list = []
     data_list = []
     with open(inFile, 'r') as f:
         line_count = 0
@@ -171,41 +301,61 @@ def process_parameter_sweeps(dt_folder):
                 data = line.strip().split(",")
                 T = float(data[1])
                 g = float(data[0])
-                line_data = (float(data[2]), float(data[3]))
+                L = float(data[2])
+                line_data = (float(data[3]), float(data[4]))
                 if T not in T_list:
                     T_list.append(T)
                     g_list.append([g])
-                    data_list.append([line_data])
+                    L_list.append([[L]])
+                    data_list.append([[line_data]])
                 else:
                     for i in range(len(T_list)):
                         if T_list[i] == T:
-                            g_list[i].append(g)
-                            data_list[i].append(line_data)
+                            if g not in g_list[i]:
+                                g_list[i].append(g)
+                                L_list[i].append([L])
+                                data_list[i].append([line_data])
+                            else:
+                                for j in range(len(g_list[i])):
+                                    if g_list[i][j] == g:
+                                        L_list[i][j].append(L)
+                                        data_list[i][j].append(line_data)
+                                        break
                             break
-    
-    g_dmrg, S2_dmrg = np.loadtxt(os.path.join(dt_folder, "entropy_Renyi.txt"), skiprows=3, unpack=True)
 
     for i in range(len(T_list)):
         temperature=T_list[i]
         g_T_list = g_list[i]
-        data_T_list = data_list[i]
-        S2_mean_list = list(map(lambda x :float(x[0]), data_T_list))
-        S2_err_list = list(map(lambda x :float(x[1]), data_T_list))
-        g_T_list, S2_mean_list, S2_err_list = zip(*sorted(zip(g_T_list, S2_mean_list, S2_err_list)))
+        S2_g_means = []
+        S2_g_err = []
+        for j in range(len(g_T_list)):
+            g = g_T_list[j]
+            L_g_T_list = L_list[i][j]
+            data_T_g_list = data_list[i][j]
+            S2_mean_list = list(map(lambda x :float(x[0]), data_T_g_list))
+            S2_err_list = list(map(lambda x :float(x[1]), data_T_g_list))
+            L_g_T_list, S2_mean_list, S2_err_list = zip(*sorted(zip(L_g_T_list, S2_mean_list, S2_err_list)))
 
-        if max(g_dmrg) > max(g_T_list):
-            for i in range(len(g_dmrg)):
-                if g_dmrg[i] > max(g_T_list):
-                    g_dmrg = g_dmrg[:i]
-                    S2_dmrg = S2_dmrg[:i]
-                    break
+            S2_g_means.append(S2_mean_list[-1])
+            S2_g_err.append(S2_err_list[-1])
+
+            plt.figure()
+            plt.scatter(L_g_T_list, S2_mean_list, label="g={}".format(g))
+            plt.errorbar(L_g_T_list, S2_mean_list, S2_err_list, capsize=5, fmt='None', color='black')
+            plt.title("S2 (g={}, T={})".format(g, temperature))
+            plt.ylabel("S2")
+            plt.xlabel("L")
+            plt.legend()
+            S2PlotName = "S2 (g = {}, T = {}).png".format(g, temperature)
+            S2PlotPath = os.path.join(dt_folder, S2PlotName)
+            plt.savefig(S2PlotPath)
 
         plt.figure()
         #plt.plot(g_T_list, S2_mean_list)
-        plt.scatter(g_T_list, S2_mean_list, label="MC", color='C0')
-        plt.plot(g_dmrg, S2_dmrg, label="DMRG", color="C3")
-        plt.errorbar(g_T_list, S2_mean_list, S2_err_list,capsize=5,fmt="none", color='black')
-        plt.title("Effect Of Coupling Strength On S2 (T = {})".format(temperature))
+        plt.scatter(g_T_list, S2_g_means, label="MC", color='C0')
+        #plt.plot(g_dmrg, S2_dmrg, label="DMRG", color="C3")
+        plt.errorbar(g_T_list, S2_g_means, S2_g_err,capsize=5,fmt="none", color='black')
+        plt.title("S2 (T = {})".format(temperature))
         plt.ylabel("S2")
         plt.xlabel("g")
         plt.legend()
@@ -350,23 +500,32 @@ def func_purity(x):
 
     return x/(1.0 - x)
 
+def func_identity(x):
+
+    return x
+
 def func_pair(x, a, b):
     return a + b*x*x*x
 
 if __name__=="__main__":
     
-    mc_output_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02"
-    #process_mc_outputs(dt_folder)
+    #mc_output_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02"
+    mc_output_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/25_11_2025_16_42_08"
+    process_mc_outputs_ordered_starts(mc_output_folder)
+
+    #mc_output_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/25_11_2025_06_18_59"
+    #process_mc_outputs_random_start(mc_output_folder)
     
     process_estimator_outputs(mc_output_folder)
     process_parameter_sweeps(mc_output_folder)
-    
+
+    '''
     file_1 = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02/Parameter Sweep Binning.csv"
     file_2 = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02/Parameter Sweep.csv"
     file_3 = "/Users/shaeermoeed/Github/DVRPairMC/Results/Entropy/Test/20_06_2024_17_57_02/entropy_Renyi.txt"
     g1, T1, S2_1, S2_err_1 = np.loadtxt(file_1, unpack=True, delimiter=",", skiprows=2)
     g2, T2, S2_2, S2_err_2 = np.loadtxt(file_2, unpack=True, delimiter=",", skiprows=2)
-    dmrg_g, dmrg_S2 = np.loadtxt(os.path.join(mc_output_folder, "entropy_Renyi.txt"), skiprows=3, unpack=True)
+    #dmrg_g, dmrg_S2 = np.loadtxt(os.path.join(mc_output_folder, "entropy_Renyi.txt"), skiprows=3, unpack=True)
 
     log2 = [np.log(2.0)]*len(g1)
 
@@ -376,7 +535,7 @@ if __name__=="__main__":
     plt.errorbar(g1, S2_1, S2_err_2, fmt='None', capsize=5)
     #plt.scatter(g2, S2_2, label="Jack-Knife", color='C0')
     #plt.errorbar(g2, S2_2, S2_err_2, fmt='None', capsize=5, color="black")
-    plt.plot(dmrg_g[:14], dmrg_S2[:14], label="DMRG", color='C3')
+    #plt.plot(dmrg_g[:14], dmrg_S2[:14], label="DMRG", color='C3')
     plt.plot(g1, log2, label=r"ln(2)", color='black')
     plt.ylabel(r"$S_2$", fontsize=20)
     plt.xlabel(r"$g$", fontsize=20)
@@ -385,6 +544,4 @@ if __name__=="__main__":
     plt.legend()
     plt.savefig("Entropy.png", bbox_inches='tight', dpi=1200)
     plt.show()
-    
-
-
+    '''

@@ -73,13 +73,13 @@ def process_mc_outputs(dt_folder):
                 plt.show()
         '''
 
-        if g < 0.49: 
+        if g < 0.49:
             binder_num_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/5.0)), binder_num_array, 5)
             binder_denom_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(binder_array)[0])/5.0)), binder_denom_array, 5)
             binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks)
             corr_jk_samples, num_blocks = jack_knife_samples(int(np.floor((np.shape(corr_array)[0])/5.0)), corr_array, 5)
             corr_mean, corr_se = calculate_corr_jk_estimates(corr_jk_samples, num_blocks, N) 
-        elif g > 0.61: 
+        elif g > 0.61:
             binder_num_jk_samples, num_blocks = jack_knife_samples(1, binder_num_array, 5)
             binder_denom_jk_samples, num_blocks = jack_knife_samples(1, binder_denom_array, 5)
             binder_mean, binder_error = calculate_binder_jk_estimates(binder_num_jk_samples, binder_denom_jk_samples, num_blocks) 
@@ -633,6 +633,7 @@ if __name__=="__main__":
     process_parameter_sweeps(dt_folder_5, cumulative=False, fit_type=None)
     '''
 
+    '''
     # m_max = 14 with P = 60
     dt_folder_6 = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/07_02_2025_19_54_08"
     process_mc_outputs(dt_folder_6)
@@ -644,6 +645,13 @@ if __name__=="__main__":
     process_mc_outputs(dt_folder_7)
     process_estimator_outputs(dt_folder_7, cumulative=False, fit_type=None)
     process_parameter_sweeps(dt_folder_7, cumulative=False, fit_type=None)
+    '''
+
+    #m_max=4 with P=20, N=3
+    dt_folder = "/Users/shaeermoeed/Github/DVRPairMC/Results/PIGS/02_09_2025_11_24_39"
+    process_mc_outputs(dt_folder)
+    process_estimator_outputs(dt_folder, cumulative=False, fit_type=None)
+    process_parameter_sweeps(dt_folder, cumulative=False, fit_type=None)
     
     '''
     import plot_corr

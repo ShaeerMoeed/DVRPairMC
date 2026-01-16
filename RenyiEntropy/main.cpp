@@ -10,13 +10,19 @@ public:
     double g;
     double T;
     std::string startConfig;
+    std::string exchangeType;
+    int N_A;
+    int N_B;
 
     InputParamters(const int &num_beads, const double &coupling_strength, const double &simulation_temperature,
-                   const std::string &start_config){
+                   const std::string &start_config, const std::string &exchange_type, const int &NA, const int &NB){
         P = num_beads;
         g = coupling_strength;
         T = simulation_temperature;
         startConfig = start_config;
+        exchangeType = exchange_type;
+        N_A = NA;
+        N_B = NB;
     }
 };
 
@@ -26,12 +32,10 @@ public:
     std::string rootFolder = "/Users/shaeermoeed/Github/DVRPairMC/";
     std::string densityFolder = rootFolder + "ProbabilityDensities/";
     int num_digits = 3;
-    int N_A = 2;
-    int N_B = 2;
     // TODO: Use max_states = 10 for prod
     int max_states = 4;
     int num_grid_pts = 2 * max_states + 1;
-    int mc_steps = 2000000;
+    int mc_steps = 100000;
     int sampler_seed = 123456789;
     int sampler_seed_prime = 456789012;
     int swap_seed = 890123456;
@@ -59,13 +63,34 @@ public:
         double g = sim_params.g;
         double T=  sim_params.T;
         int P = sim_params.P;
+        int N_A = sim_params.N_A;
+        int N_B = sim_params.N_B;
+        std::string exchange_type = sim_params.exchangeType;
         std::string startConfig = sim_params.startConfig;
+
+        std::string str_N_A;
+        std::string str_N_B;
+        std::string exchange_length;
+        if (exchange_type == "SwappedSectors") {
+            str_N_A = std::to_string(N_A);
+            str_N_B = std::to_string(N_B);
+            exchange_length = "2";
+        }
+        else if (exchange_type == "SwappedUnswapped") {
+            str_N_A = "0";
+            str_N_B = std::to_string(N_A + N_B);
+            exchange_length = std::to_string(N_A);
+        }
+        else {
+            throw std::runtime_error("Unrecognized exchange type provided\n");
+        }
 
         std::string parameter_folder_name = "g_" + std::to_string(g).substr(0, num_digits) +
                                             "_T_" + std::to_string(T).substr(0, num_digits) +
-                                            "_P_"+ std::to_string(P) + "_NA_" + std::to_string(N_A) +
-                                            "_NB_" + std::to_string(N_B) + "_l_" + std::to_string(max_states) +
-                                            "_Start_" + startConfig;
+                                            "_P_"+ std::to_string(P) + "_NA_" + str_N_A +
+                                            "_NB_" + str_N_B + "_l_" + std::to_string(max_states) +
+                                            "_Start_" + startConfig + "_Exchange_Type_" + exchange_type +
+                                            "_Exchange_Length_" + exchange_length;
 
         std::string parameterFolder = dt_folder + "/" + parameter_folder_name;
 
@@ -80,16 +105,24 @@ public:
         }
 
         //TODO: Set diagnostics to false for prod
-        MonteCarloIntegrator mcSimulator = MonteCarloIntegrator(N_A, N_B,P,
-        max_states, num_grid_pts, T, g, 0,
-        densityFolder,num_digits,mc_steps,startConfig,
-        111, sampler_seed, sampler_seed_prime, swap_seed, false,outFolder);
+        MonteCarloIntegrator mcSimulator = MonteCarloIntegrator(N_A, N_B, P,
+        max_states, num_grid_pts, T, g,densityFolder,
+        num_digits, mc_steps, startConfig,111,
+        sampler_seed, sampler_seed_prime, swap_seed, false, outFolder,str_N_A,
+        str_N_B, exchange_type, exchange_length);
 
-        mcSimulator.integrateSwappedUnswapped();
+        if (exchange_type == "SwappedUnswapped") {
+            mcSimulator.integrateSwappedUnswapped();
+        }
+        else if (exchange_type == "SwappedSectors") {
+            mcSimulator.integrateSwapped();
+        }
 
         int swappedMoves = mcSimulator.CountSwappedMoves;
         int unswappedMoves = mcSimulator.CountUnswappedMoves;
 
+        std::cout << "Exchange Type " << exchange_type << "\n";
+        std::cout << "g " << g << "\n";
         std::cout << "P " << P << "\n";
         std::cout << "N " << swappedMoves << "\n";
         std::cout << "D " << unswappedMoves << "\n";
@@ -117,56 +150,72 @@ int main() {
     std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
 
     double sim_T = 0.1;
-    std::vector<double> list_g {0.4, 0.5, 0.6, 1.0, 1.1, 1.2, 1.3};
-    std::vector<int> list_p {14, 16, 18};
+    std::vector<double> list_g {0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4};
+    std::vector<int> list_p {12, 14, 16};
+    int N_A = 2;
+    int N_B = 2;
 
     int g_index = 0;
     std::vector<InputParamters> simulation_params_1;
     for (int & i : list_p){
-        simulation_params_1.emplace_back(i, list_g.at(g_index), sim_T, "Zero");
-        simulation_params_1.emplace_back(i, list_g.at(g_index), sim_T, "Pi");
+        simulation_params_1.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedUnswapped", N_A, N_A);
+        simulation_params_1.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedUnswapped", N_A, N_A);
+        //simulation_params_1.emplace_back(i, list_g.at(g_index), sim_T, "Zero","SwappedSectors", 2, N_B);
+        //simulation_params_1.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedSectors", 2, 6);
     }
     g_index += 1;
 
     std::vector<InputParamters> simulation_params_2;
     for (int & i : list_p){
-        simulation_params_2.emplace_back(i, list_g.at(g_index), sim_T, "Zero");
-        simulation_params_2.emplace_back(i, list_g.at(g_index), sim_T, "Pi");
+        simulation_params_2.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedUnswapped", N_A, N_A);
+        simulation_params_2.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedUnswapped", N_A, N_A);
+        //simulation_params_2.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedSectors", 2, 6);
+        //simulation_params_2.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedSectors", 2, 6);
     }
     g_index += 1;
 
     std::vector<InputParamters> simulation_params_3;
     for (int & i : list_p){
-        simulation_params_3.emplace_back(i, list_g.at(g_index), sim_T, "Zero");
-        simulation_params_3.emplace_back(i, list_g.at(g_index), sim_T, "Pi");
+        simulation_params_3.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedUnswapped", N_A, N_A);
+        simulation_params_3.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedUnswapped", N_A, N_A);
+        //simulation_params_3.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedSectors", 2, 6);
+        //simulation_params_3.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedSectors", 2, 6);
     }
     g_index += 1;
 
     std::vector<InputParamters> simulation_params_4;
     for (int & i : list_p){
-        simulation_params_4.emplace_back(i, list_g.at(g_index), sim_T, "Zero");
-        simulation_params_4.emplace_back(i, list_g.at(g_index), sim_T, "Pi");
+        simulation_params_4.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedUnswapped", N_A, N_A);
+        simulation_params_4.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedUnswapped", N_A, N_A);
+        //simulation_params_4.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedSectors", 2, 6);
+        //simulation_params_4.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedSectors", 2, 6);
     }
     g_index += 1;
 
     std::vector<InputParamters> simulation_params_5;
     for (int & i : list_p){
-        simulation_params_5.emplace_back(i, list_g.at(g_index), sim_T, "Zero");
-        simulation_params_5.emplace_back(i, list_g.at(g_index), sim_T, "Pi");
+        simulation_params_5.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedUnswapped", N_A, N_A);
+        simulation_params_5.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedUnswapped", N_A, N_A);
+        //simulation_params_5.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedSectors", 2, 6);
+        //simulation_params_5.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedSectors", 2, 6);
     }
     g_index += 1;
 
     std::vector<InputParamters> simulation_params_6;
     for (int & i : list_p){
-        simulation_params_6.emplace_back(i, list_g.at(g_index), sim_T, "Zero");
-        simulation_params_6.emplace_back(i, list_g.at(g_index), sim_T, "Pi");
+        simulation_params_6.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedUnswapped", N_A, N_A);
+        simulation_params_6.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedUnswapped", N_A, N_A);
+        //simulation_params_6.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedSectors", 2, 6);
+        //simulation_params_6.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedSectors", 2, 6);
     }
     g_index += 1;
 
     std::vector<InputParamters> simulation_params_7;
     for (int & i : list_p){
-        simulation_params_7.emplace_back(i, list_g.at(g_index), sim_T, "Zero");
-        simulation_params_7.emplace_back(i, list_g.at(g_index), sim_T, "Pi");
+        simulation_params_7.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedUnswapped", N_A, N_A);
+        simulation_params_7.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedUnswapped", N_A, N_A);
+        //simulation_params_7.emplace_back(i, list_g.at(g_index),sim_T, "Zero","SwappedSectors", 2, 6);
+        //simulation_params_7.emplace_back(i, list_g.at(g_index),sim_T, "Pi","SwappedSectors", 2, 6);
     }
     g_index += 1;
     /*
@@ -198,6 +247,7 @@ int main() {
     }
     */
 
+
     MCSimulator mcSimulations_1 = MCSimulator();
     MCSimulator mcSimulations_2 = MCSimulator();
     MCSimulator mcSimulations_3 = MCSimulator();
@@ -205,6 +255,7 @@ int main() {
     MCSimulator mcSimulations_5 = MCSimulator();
     MCSimulator mcSimulations_6 = MCSimulator();
     MCSimulator mcSimulations_7 = MCSimulator();
+
     /*
     MCSimulator mcSimulations_8 = MCSimulator();
     MCSimulator mcSimulations_9 = MCSimulator();
@@ -227,6 +278,7 @@ int main() {
     std::thread thread_11(&MCSimulator::iterateParamters, &mcSimulations_11, simulation_params_11);
     */
 
+
     thread_1.join();
     thread_2.join();
     thread_3.join();
@@ -242,22 +294,23 @@ int main() {
     thread_11.join();
     */
 
+    /*
     std::chrono::time_point<std::chrono::system_clock> end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
 
     std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
-    /*
+
     std::vector<InputParamters> simulation_params;
 
-    simulation_params.emplace_back(4, 1.0, 0.1, "Zero");
-    simulation_params.emplace_back(4, 1.0, 0.1, "Pi");
+    simulation_params.emplace_back(16, 1.0,
+                                     sim_T, "Zero",
+                                     "SwappedSectors", 2, 6);
 
     MCSimulator mcSimulations = MCSimulator();
 
     mcSimulations.iterateParamters(simulation_params);
-     */
-
+    */
 
     return 0;
 }

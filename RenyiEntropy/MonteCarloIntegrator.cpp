@@ -10,8 +10,6 @@ private:
     int numRotorsSectorB;
     int numBeads;
     int numGridPts;
-    int numberSwappedRotorsInit;
-    int numberSwappedRotors;
     bool Swapped;
 
     ProbabilityDensities probabilityTables;
@@ -47,31 +45,22 @@ public:
 
     MonteCarloIntegrator(const int &num_rotors_A, const int &num_rotors_B, const int &num_beads, const int &max_states,
                      const int &num_grid_pts, const double &simulation_temperature, const double &coupling_strength,
-                     const int num_swapped_rotors, const std::string &density_directory, const int &density_file_digits,
+                     const std::string &density_directory, const int &density_file_digits,
                      const int &sim_steps, const std::string &start_config, const int &random_start_seed,
                      const int &sampler_seed, const int &sampler_seed_prime, const int &swap_seed,
-                     const bool &track_diagnostics, const std::string &out_dir):
+                     const bool &track_diagnostics, const std::string &out_dir, const std::string &N_A_str,
+                     const std::string &N_B_str, const std::string &exchange_type, const std::string &exchange_length):
                      probabilityTables(coupling_strength, simulation_temperature, max_states, num_beads,
                      density_directory, density_file_digits),
-                     OutWriter(sim_steps, num_rotors_A, num_rotors_B, num_beads,
-                     coupling_strength, max_states, simulation_temperature, out_dir){
+                     OutWriter(sim_steps, N_A_str, N_B_str, num_beads, coupling_strength,
+                               max_states, simulation_temperature, exchange_type, exchange_length, out_dir){
 
         numRotorsSectorA = num_rotors_A;
         numRotorsSectorB = num_rotors_B;
         numRotorsTotal = numRotorsSectorA + numRotorsSectorB;
 
-        numberSwappedRotors = num_swapped_rotors;
-        numberSwappedRotorsInit = num_swapped_rotors;
         // TODO: Set Swapped to false for prod
         Swapped = false;
-
-        if (numberSwappedRotorsInit != 0){
-            if (numRotorsSectorA != numberSwappedRotorsInit){
-                throw std::runtime_error("Number of initial swapped rotors (" +
-                std::to_string(numberSwappedRotorsInit) +
-                ") is not equal to number of rotors in sector A (" + std::to_string(numRotorsSectorA) + ") \n");
-            }
-        }
 
         CountSwappedMoves = 0;
         CountUnswappedMoves = 0;
@@ -116,7 +105,7 @@ public:
         std::vector<int> beadInitialConfigsB;
         std::vector<int> beadInitialConfigsAPrime;
         std::vector<int> beadInitialConfigsBPrime;
-        if (startConfigsSetting == "random"){
+        if (startConfigsSetting == "Random"){
             initialConfigGenerator.seed(initialConfigSeed);
             initialConfigGeneratorPrime.seed(initialConfigSeed);
             seedThrowaway = 0.0;
@@ -186,6 +175,9 @@ public:
                 initialConfigurationsAPrime.push_back(beadInitialConfigsAPrime);
                 initialConfigurationsBPrime.push_back(beadInitialConfigsBPrime);
             }
+        }
+        else {
+            throw std::runtime_error("Could not initialize configurations\n");
         }
 
         initialConfigurations.push_back(initialConfigurationsA);
@@ -612,20 +604,20 @@ public:
 
         int midBead = numBeads/2;
 
-        int index_mid_bead_first_rotor = configsA.at(midBead).at(0);
-        int index_mid_bead_second_rotor = configsA.at(midBead).at(1);
+        int index_mid_bead_first_rotor = configsA.at(midBead).at(numRotorsSectorA - 2);
+        int index_mid_bead_second_rotor = configsA.at(midBead).at(numRotorsSectorA - 1);
         int index_mid_bead_third_rotor = configsB.at(midBead).at(0);
 
-        int index_mid_bead_plus_first_rotor = configsA.at(midBead+1).at(0);
-        int index_mid_bead_plus_second_rotor = configsA.at(midBead+1).at(1);
+        int index_mid_bead_plus_first_rotor = configsA.at(midBead+1).at(numRotorsSectorA - 2);
+        int index_mid_bead_plus_second_rotor = configsA.at(midBead+1).at(numRotorsSectorA - 1);
         int index_mid_bead_plus_third_rotor = configsB.at(midBead+1).at(0);
 
-        int index_mid_bead_first_rotor_prime = configsAPrime.at(midBead).at(0);
-        int index_mid_bead_second_rotor_prime = configsAPrime.at(midBead).at(1);
+        int index_mid_bead_first_rotor_prime = configsAPrime.at(midBead).at(numRotorsSectorA - 2);
+        int index_mid_bead_second_rotor_prime = configsAPrime.at(midBead).at(numRotorsSectorA - 1);
         int index_mid_bead_third_rotor_prime = configsBPrime.at(midBead).at(0);
 
-        int index_mid_bead_plus_first_rotor_prime = configsAPrime.at(midBead+1).at(0);
-        int index_mid_bead_plus_second_rotor_prime = configsAPrime.at(midBead+1).at(1);
+        int index_mid_bead_plus_first_rotor_prime = configsAPrime.at(midBead+1).at(numRotorsSectorA - 2);
+        int index_mid_bead_plus_second_rotor_prime = configsAPrime.at(midBead+1).at(numRotorsSectorA - 1);
         int index_mid_bead_plus_third_rotor_prime = configsBPrime.at(midBead+1).at(0);
 
         std::vector<double> swapProbs = probabilityTables.swapUnswapProbs(index_mid_bead_first_rotor,
@@ -648,6 +640,120 @@ public:
             Swapped = false;
         }
 
+    }
+
+    void sampleSwapBoundaryExchange(std::vector<std::vector<int>> &configsA, std::vector<std::vector<int>> &configsB,
+                      std::vector<std::vector<int>> &configsAPrime, std::vector<std::vector<int>> &configsBPrime) {
+
+        if (!Swapped) {
+            std::vector<std::vector<int>> tmpConfigsA;
+            std::vector<std::vector<int>> tmpConfigsAPrime;
+            std::vector<std::vector<int>> tmpConfigsB;
+            std::vector<std::vector<int>> tmpConfigsBPrime;
+
+            for (int j = 0; j < numBeads+1; j++) {
+
+                std::vector<int> tmpBeadConfigsA;
+                std::vector<int> tmpBeadConfigsB;
+                std::vector<int> tmpBeadConfigsAPrime;
+                std::vector<int> tmpBeadConfigsBPrime;
+
+                for (int i = 0; i < numRotorsSectorA; i++) {
+                    tmpBeadConfigsA.push_back(configsA.at(j).at(i));
+                    tmpBeadConfigsAPrime.push_back(configsAPrime.at(j).at(i));
+                }
+
+                tmpBeadConfigsA.push_back(configsB.at(j).at(0));
+                tmpBeadConfigsA.push_back(configsB.at(j).at(1));
+
+                tmpBeadConfigsAPrime.push_back(configsBPrime.at(j).at(0));
+                tmpBeadConfigsAPrime.push_back(configsBPrime.at(j).at(1));
+
+                for (int i = 2; i < numRotorsSectorB; i++) {
+                    tmpBeadConfigsB.push_back(configsB.at(j).at(i));
+                    tmpBeadConfigsBPrime.push_back(configsBPrime.at(j).at(i));
+                }
+
+                tmpConfigsA.push_back(tmpBeadConfigsA);
+                tmpConfigsAPrime.push_back(tmpBeadConfigsAPrime);
+                tmpConfigsB.push_back(tmpBeadConfigsB);
+                tmpConfigsBPrime.push_back(tmpBeadConfigsBPrime);
+
+            }
+
+            numRotorsSectorA += 2;
+            numRotorsSectorB -= 2;
+
+            sampleExchangeSwappedUnswapped(tmpConfigsA, tmpConfigsB,
+                                           tmpConfigsAPrime, tmpConfigsBPrime);
+
+            if (Swapped){
+                configsA = tmpConfigsA;
+                configsB = tmpConfigsB;
+                configsAPrime = tmpConfigsAPrime;
+                configsBPrime = tmpConfigsBPrime;
+                CountSwappedMoves++;
+            }
+            else {
+                numRotorsSectorA -= 2;
+                numRotorsSectorB += 2;
+                CountUnswappedMoves++;
+            }
+        }
+        else {
+            sampleExchangeSwappedUnswapped(configsA, configsB, configsAPrime, configsBPrime);
+
+            if (!Swapped) {
+
+                CountUnswappedMoves++;
+
+                std::vector<std::vector<int>> tmpConfigsA;
+                std::vector<std::vector<int>> tmpConfigsAPrime;
+                std::vector<std::vector<int>> tmpConfigsB;
+                std::vector<std::vector<int>> tmpConfigsBPrime;
+
+                for (int j = 0; j < numBeads+1; j++) {
+
+                    std::vector<int> tmpBeadConfigsA;
+                    std::vector<int> tmpBeadConfigsB;
+                    std::vector<int> tmpBeadConfigsAPrime;
+                    std::vector<int> tmpBeadConfigsBPrime;
+
+                    for (int i = 0; i < numRotorsSectorA-2; i++) {
+                        tmpBeadConfigsA.push_back(configsA.at(j).at(i));
+                        tmpBeadConfigsAPrime.push_back(configsAPrime.at(j).at(i));
+                    }
+
+                    tmpBeadConfigsB.push_back(configsA.at(j).at(numRotorsSectorA-2));
+                    tmpBeadConfigsB.push_back(configsA.at(j).at(numRotorsSectorA-1));
+
+                    tmpBeadConfigsBPrime.push_back(configsAPrime.at(j).at(numRotorsSectorA-2));
+                    tmpBeadConfigsBPrime.push_back(configsAPrime.at(j).at(numRotorsSectorA-1));
+
+                    for (int i = 0; i < numRotorsSectorB; i++) {
+                        tmpBeadConfigsB.push_back(configsB.at(j).at(i));
+                        tmpBeadConfigsBPrime.push_back(configsBPrime.at(j).at(i));
+                    }
+
+                    tmpConfigsA.push_back(tmpBeadConfigsA);
+                    tmpConfigsAPrime.push_back(tmpBeadConfigsAPrime);
+                    tmpConfigsB.push_back(tmpBeadConfigsB);
+                    tmpConfigsBPrime.push_back(tmpBeadConfigsBPrime);
+
+                }
+
+                numRotorsSectorA -= 2;
+                numRotorsSectorB += 2;
+
+                configsA = tmpConfigsA;
+                configsB = tmpConfigsB;
+                configsAPrime = tmpConfigsAPrime;
+                configsBPrime = tmpConfigsBPrime;
+            }
+            else {
+                CountSwappedMoves++;
+            }
+        }
     }
 
     void updateFirstBead(std::vector<std::vector<int>> &nextConfigsA, std::vector<std::vector<int>> &nextConfigsB,
@@ -1573,24 +1679,16 @@ public:
         // Last bead
         updateFinalBead(nextConfigsA, nextConfigsB, nextConfigsAPrime, nextConfigsBPrime);
 
+        sampleSwapBoundaryExchange(nextConfigsA, nextConfigsB, nextConfigsAPrime, nextConfigsBPrime);
+
         std::vector<std::vector<std::vector<int>>> nextConfigs;
         nextConfigs.push_back(nextConfigsA);
         nextConfigs.push_back(nextConfigsB);
         nextConfigs.push_back(nextConfigsAPrime);
         nextConfigs.push_back(nextConfigsBPrime);
 
-        /*
-        if (numberSwappedRotors > numberSwappedRotorsInit){
-            // Need to suggest unswapping the last rotor of A
-            // if unswap is successful: numberSwappedRotors -= 1;
-        }
-        else {
-            // Need to suggest swapping the first rotor of B
-            // if swap is successful: numberSwappedRotors += 1;
-        }
-
-        return nextConfigs;
-        */
+        CountSwappedMovesVector.push_back(CountSwappedMoves);
+        CountUnswappedMovesVector.push_back(CountUnswappedMoves);
 
         return nextConfigs;
     }
@@ -1603,6 +1701,28 @@ public:
             std::vector<std::vector<std::vector<int>>> prevStepConfigs = currentStepConfigs;
 
             currentStepConfigs = gibbsSampleSwappedUnswapped(prevStepConfigs);
+
+            if (diagnostics){
+                phiConfigurations.push_back(currentStepConfigs);
+            }
+        }
+
+        if (diagnostics){
+            OutWriter.outputDiagnosticData(phiConfigurations);
+        }
+
+        OutWriter.outputStepData(CountSwappedMovesVector, CountUnswappedMovesVector);
+
+    }
+
+    void integrateSwapped(){
+
+        std::vector<std::vector<std::vector<int>>> currentStepConfigs = initialConfigurations;
+        for (int i = 1; i < simulationSteps; i++){
+
+            std::vector<std::vector<std::vector<int>>> prevStepConfigs = currentStepConfigs;
+
+            currentStepConfigs = gibbsSampleSwapped(prevStepConfigs);
 
             if (diagnostics){
                 phiConfigurations.push_back(currentStepConfigs);

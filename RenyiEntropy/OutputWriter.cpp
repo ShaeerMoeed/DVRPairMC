@@ -6,8 +6,10 @@
 class OutputWriter{
 private:
     int simulationSteps;
-    int numRotorsA;
-    int numRotorsB;
+    std::string numRotorsA;
+    std::string numRotorsB;
+    std::string exchangeType;
+    std::string exchangeLength;
     int numBeads;
     double couplingStrength;
     double simulationTemperature;
@@ -23,8 +25,10 @@ public:
     void outputDiagnosticData(const std::vector<std::vector<std::vector<std::vector<int>>>> &phi_configs){
 
         std::string filePath = outFolderPath + "/" + "MC Diagnostic Outputs.csv";
-        std::string header = "N_A = " + std::to_string(numRotorsA)
-                + "N_B = " + std::to_string(numRotorsB) +
+        std::string header = "N_A = " + numRotorsA +
+                ", N_B = " + numRotorsB +
+                ", Exchange Type = " + exchangeType +
+                ", Exchange Length = " + exchangeLength +
                 ", P = " + std::to_string(numBeads) +
                 ", g = " + std::to_string(couplingStrength) +
                 ", T = " + std::to_string(simulationTemperature) +
@@ -37,7 +41,7 @@ public:
         ofs << header;
         for (int i = 0; i < simulationSteps; i++){
             for (int j = 0; j < numBeads; j++){
-                for (int k = 0; k < numRotorsA; k++){
+                for (int k = 0; k < phi_configs.at(i).at(0).size(); k++){
                     ofs << std::to_string(i+1);
                     ofs << "," << std::to_string(j+1);
                     ofs << "," << "A";
@@ -45,7 +49,7 @@ public:
                     ofs << "," << std::to_string(phi_configs.at(i).at(0).at(j).at(k));
                     ofs << "\n";
                 }
-                for (int k = 0; k < numRotorsB; k++){
+                for (int k = 0; k < phi_configs.at(i).at(1).size(); k++){
                     ofs << std::to_string(i+1);
                     ofs << "," << std::to_string(j+1);
                     ofs << "," << "B";
@@ -53,7 +57,7 @@ public:
                     ofs << "," << std::to_string(phi_configs.at(i).at(1).at(j).at(k));
                     ofs << "\n";
                 }
-                for (int k = 0; k < numRotorsA; k++){
+                for (int k = 0; k < phi_configs.at(i).at(2).size(); k++){
                     ofs << std::to_string(i+1);
                     ofs << "," << std::to_string(j+1);
                     ofs << "," << "A Prime";
@@ -61,7 +65,7 @@ public:
                     ofs << "," << std::to_string(phi_configs.at(i).at(2).at(j).at(k));
                     ofs << "\n";
                 }
-                for (int k = 0; k < numRotorsB; k++){
+                for (int k = 0; k < phi_configs.at(i).at(3).size(); k++){
                     ofs << std::to_string(i+1);
                     ofs << "," << std::to_string(j+1);
                     ofs << "," << "B Prime";
@@ -78,7 +82,8 @@ public:
     void outputStepData(const std::vector<int> &swapped_counts, const std::vector<int> &unswapped_counts){
 
         std::string filePath = outFolderPath + "/" + "MC Step Outputs.csv";
-        std::string header = "NA = " + std::to_string(numRotorsA) + ", NB = " + std::to_string(numRotorsB) +
+        std::string header = "NA = " + numRotorsA + ", NB = " + numRotorsB +
+                ", Exchange Type = " + exchangeType + ", Exchange Length = " + exchangeLength +
                 ", P = " + std::to_string(numBeads) +
                 ", g = " + std::to_string(couplingStrength) + ", T = " +
                 std::to_string(simulationTemperature) + ", l = " + std::to_string(lMax) +
@@ -96,13 +101,16 @@ public:
 
     }
 
-    OutputWriter(const int &sim_steps, const int &num_rotors_A, const int &num_rotors_B, const int &num_beads,
-          const double &coupling_strength, const int &max_states, const double &simulation_temperature,
-          const std::string &out_dir):phiGrid(max_states){
+    OutputWriter(const int &sim_steps, const std::string &num_rotors_A, const std::string &num_rotors_B,
+                 const int &num_beads, const double &coupling_strength, const int &max_states,
+                 const double &simulation_temperature, const std::string &exchange_type,
+                 const std::string &exchange_length, const std::string &out_dir):phiGrid(max_states){
 
         simulationSteps = sim_steps;
         numRotorsA = num_rotors_A;
         numRotorsB = num_rotors_B;
+        exchangeType = exchange_type;
+        exchangeLength = exchange_length;
         numBeads = num_beads;
         couplingStrength = coupling_strength;
         lMax = max_states;

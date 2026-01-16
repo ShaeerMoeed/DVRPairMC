@@ -6,13 +6,12 @@ import os
 
 precision_dict = {0:np.float64, 1:np.float32}
 
-def dvr_k(l, precision_enum):
+def dvr_k(l, num_grid_pts, precision_enum):
 
-    num_grid_pts = 2 * l + 1
     precision = precision_dict[precision_enum]
     K_DVR = np.zeros((num_grid_pts, num_grid_pts), dtype=precision)
     l_new = l
-    num_g_p_new = 2 * l_new + 1
+    num_g_p_new = num_grid_pts
     for i in range(num_grid_pts):
             for j in range(num_grid_pts):
                 if i == j:
@@ -25,9 +24,8 @@ def dvr_k(l, precision_enum):
 
     return K_DVR
 
-def dvr_v(l, g, precision_enum):
+def dvr_v(l, num_grid_pts, g, precision_enum):
      
-    num_grid_pts = 2 * l + 1
     precision = precision_dict[precision_enum]
     V_DVR = np.zeros((num_grid_pts**2, num_grid_pts**2), dtype=precision)
     for i in range(num_grid_pts):
@@ -42,10 +40,9 @@ def dvr_v(l, g, precision_enum):
 
     return V_DVR
 
-def propagator_k_marx(l, P, precision_num, output_diag):
+def propagator_k_marx(l, num_grid_pts, P, precision_num, output_diag):
 
     precision = precision_dict[precision_num]
-    num_grid_pts = 2 * l + 1
     delta_phi = 2.0 * np.pi/num_grid_pts
     free_rho_marx = np.zeros((num_grid_pts, num_grid_pts), dtype=precision)
     tau = 1/(0.1 * P)
@@ -132,15 +129,15 @@ def pair_prop_test(g, l, P):
 
     return E0_nmm
 
-def write_densities(parent_dir, l, g_list, test_props, T):
+def write_densities(parent_dir, l, num_grid_pts, g_list, test_props, T):
 
-    k = dvr_k(l, 0)
+    k = dvr_k(l, num_grid_pts, 0)
 
     for i in range(len(g_list)):
         g = g_list[i]
-        v = dvr_v(l, g, 0)
+        v = dvr_v(l, num_grid_pts, g, 0)
         tau = 1.0/T
-        h = np.kron(k, np.eye(2 * l + 1)) + np.kron(np.eye(2 * l + 1), k) + v
+        h = np.kron(k, np.eye(num_grid_pts)) + np.kron(np.eye(num_grid_pts), k) + v
         evals, evecs = np.linalg.eigh(h)
         prop_h_2_diag = np.zeros(np.shape(h))
         for i in range(len(evals)):
@@ -154,8 +151,6 @@ def write_densities(parent_dir, l, g_list, test_props, T):
             prop_k_diag[i,i] = np.exp(-tau * evals_k[i])
 
         prop_k = np.matmul(np.matmul(evecs_k, prop_k_diag), np.transpose(evecs_k))
-
-        num_grid_pts = 2 * l + 1
 
         for i in range(num_grid_pts):
             for j in range(num_grid_pts):
@@ -199,18 +194,17 @@ def write_densities(parent_dir, l, g_list, test_props, T):
                         density_negative = True
                         
         if not density_negative:
-            write_file(parent_dir, "Pair", prop_pair, l, T, g)
-            write_file(parent_dir, "Free", prop_k, l, T, g)
-            write_file(parent_dir, "Sign", prop_pair_sgn, l, T, g)
+            write_file(parent_dir, "Pair", prop_pair, l, num_grid_pts, T, g)
+            write_file(parent_dir, "Free", prop_k, l, num_grid_pts, T, g)
+            write_file(parent_dir, "Sign", prop_pair_sgn, l, num_grid_pts, T, g)
 
     return 0
 
-def write_file(parent_dir, density_name, density_matrix, l, T, g):
+def write_file(parent_dir, density_name, density_matrix, l, num_grid_pts, T, g):
 
     file_name = "{}_Propagator_DVR_l_{}_g_{}_T_{}.csv".format(density_name, l, g, T)
     filepath = os.path.join(parent_dir, file_name)
 
-    num_grid_pts = 2*l+1
     if density_name == "Pair" or density_name == "Sign":
         dims = num_grid_pts**2
     elif density_name == "Free":
@@ -321,15 +315,16 @@ if __name__ == "__main__":
     pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
     '''
 
-    T_list = [6.0]
-    l = 14
-    g_list = [0.5, 0.6]
+    T_list = [1.0]
+    l = 10
+    num_grid_pts = 2*l
+    g_list = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4]
 
     tau_list = [1.0/(T) for T in T_list]
     N = 2
     pool = multiprocessing.Pool()
     parent_dir = "/Users/shaeermoeed/Github/DVRPairMC/ProbabilityDensities"
-    pool.map(partial(write_densities, parent_dir, l, g_list, True), T_list)
+    pool.map(partial(write_densities, parent_dir, l, num_grid_pts, g_list, True), T_list)
 
     
 

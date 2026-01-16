@@ -31,10 +31,10 @@ public:
     int block_num = 1;
     int num_blocks = 1;
     //int N = 150;
-    int max_states = 10;
+    int max_states = 4;
     //int max_states = 10;
     int num_grid_pts = 2 * max_states + 1;
-    int mc_steps = 100000;
+    int mc_steps = 1000000;
     //int mc_steps = 10000;
     int sampler_seed = 901234567;
     int startPos = 1;
@@ -557,26 +557,90 @@ int main() {
 
     std::vector<InputParameters> simulation_params_1;
     std::vector<InputParameters> simulation_params_2;
+    std::vector<InputParameters> simulation_params_3;
+    std::vector<InputParameters> simulation_params_4;
+    std::vector<InputParameters> simulation_params_5;
+    std::vector<InputParameters> simulation_params_6;
+    std::vector<InputParameters> simulation_params_7;
+    std::vector<InputParameters> simulation_params_8;
+    std::vector<InputParameters> simulation_params_9;
+    std::vector<InputParameters> simulation_params_10;
+    std::vector<InputParameters> simulation_params_11;
+    std::vector<InputParameters> simulation_params_12;
+
     MCSimulator mcSimulations_1 = MCSimulator(root_folder, dt_folder);
     MCSimulator mcSimulations_2 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_3 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_4 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_5 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_6 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_7 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_8 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_9 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_10 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_11 = MCSimulator(root_folder, dt_folder);
+    MCSimulator mcSimulations_12 = MCSimulator(root_folder, dt_folder);
 
     double sim_T = 0.1;
-    int p_1 = 60;
+    int p_1 = 10;
+    int p_2 = 20;
+    int p_3 = 30;
     double g = 0.5;
-    int N = 5;
+    int N = 3;
 
-    simulation_params_1.push_back(InputParameters(p_1, 0.5, sim_T,
+    simulation_params_1.push_back(InputParameters(p_1, 0.2, sim_T,
                                                   N, false));
-    simulation_params_2.push_back(InputParameters(p_1, 0.6, sim_T,
+    simulation_params_2.push_back(InputParameters(p_1, 0.5, sim_T,
+                                                  N, false));
+    simulation_params_3.push_back(InputParameters(p_1, 1.0, sim_T,
+                                                  N, false));
+    simulation_params_4.push_back(InputParameters(p_1, 1.5, sim_T,
+                                                  N, false));
+    simulation_params_5.push_back(InputParameters(p_2, 0.2, sim_T,
+                                                  N, false));
+    simulation_params_6.push_back(InputParameters(p_2, 0.5, sim_T,
+                                                  N, false));
+    simulation_params_7.push_back(InputParameters(p_2, 1.0, sim_T,
+                                                  N, false));
+    simulation_params_8.push_back(InputParameters(p_2, 1.5, sim_T,
+                                                  N, false));
+    simulation_params_9.push_back(InputParameters(p_3, 0.2, sim_T,
+                                                  N, false));
+    simulation_params_10.push_back(InputParameters(p_3, 0.5, sim_T,
+                                                  N, false));
+    simulation_params_11.push_back(InputParameters(p_3, 1.0, sim_T,
+                                                  N, false));
+    simulation_params_12.push_back(InputParameters(p_3, 1.5, sim_T,
                                                   N, false));
 
     std::thread thread_1(&MCSimulator::iterateParamters, &mcSimulations_1, simulation_params_1);
     std::thread thread_2(&MCSimulator::iterateParamters, &mcSimulations_2, simulation_params_2);
+    std::thread thread_3(&MCSimulator::iterateParamters, &mcSimulations_3, simulation_params_3);
+    std::thread thread_4(&MCSimulator::iterateParamters, &mcSimulations_4, simulation_params_4);
+    std::thread thread_5(&MCSimulator::iterateParamters, &mcSimulations_5, simulation_params_5);
+    std::thread thread_6(&MCSimulator::iterateParamters, &mcSimulations_6, simulation_params_6);
+    std::thread thread_7(&MCSimulator::iterateParamters, &mcSimulations_7, simulation_params_7);
+    std::thread thread_8(&MCSimulator::iterateParamters, &mcSimulations_8, simulation_params_8);
+    std::thread thread_9(&MCSimulator::iterateParamters, &mcSimulations_9, simulation_params_9);
+    std::thread thread_10(&MCSimulator::iterateParamters, &mcSimulations_10, simulation_params_10);
+    std::thread thread_11(&MCSimulator::iterateParamters, &mcSimulations_11, simulation_params_11);
+    std::thread thread_12(&MCSimulator::iterateParamters, &mcSimulations_12, simulation_params_12);
+
     thread_1.join();
     thread_2.join();
+    thread_3.join();
+    thread_4.join();
+    thread_5.join();
+    thread_6.join();
+    thread_7.join();
+    thread_8.join();
+    thread_9.join();
+    thread_10.join();
+    thread_11.join();
+    thread_12.join();
 
     // To run one set of parameters in a loop without multi-threading
-    mcSimulations_1.iterateParamters(simulation_params_1);
+    //mcSimulations_1.iterateParamters(simulation_params_1);
 
     return 0;
 }
